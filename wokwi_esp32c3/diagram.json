@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "author": "Bond Touch Prototype",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-c3-devkitm-1", "id": "esp", "top": 120, "left": 0, "attrs": {} },
+    { "type": "wokwi-neopixel", "id": "neopixel1", "top": -60, "left": 80, "attrs": { "label": "3-Pin RGB LED (VCC, GND, DAT)" } },
+    { "type": "wokwi-pushbutton", "id": "touchSensor", "top": 240, "left": 100, "attrs": { "color": "red", "label": "3-Pin Touch Sensor (VCC, GND, SIG)" } }
+  ],
+  "connections": [
+    [ "esp:GND.1", "neopixel1:GND", "black", [ "v0" ] ],
+    [ "esp:3V3", "neopixel1:VDD", "red", [ "v0" ] ],
+    [ "esp:8", "neopixel1:DIN", "green", [ "h0" ] ],
+    [ "esp:4", "touchSensor:1.A", "orange", [ "h0" ] ],
+    [ "esp:3V3", "touchSensor:2.A", "red", [ "h0" ] ],
+    [ "esp:GND.2", "touchSensor:1.B", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bond Touch Prototype — Founder Manual</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090c;
+      color: #e2e2e8;
+      font-family: 'Outfit', sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #121217;
+      border: 1px solid #23232e;
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 20px;
+      color: #ff416c;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #23232e;
+      padding-bottom: 8px;
+    }
+    p, li { font-size: 15px; color: #a0a0b2; margin-bottom: 12px; }
+    strong { color: #fff; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    .box {
+      background: #1a1a22;
+      border: 1px solid #2d2d3b;
+      border-radius: 14px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .highlight {
+      color: #48bb78;
+      font-weight: 600;
+    }
+    .code-inline {
+      background: #000;
+      color: #ff416c;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    a.btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      color: white;
+      text-decoration: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>❤️ Bond Touch Prototype Manual</h1>
+  <p>This is your complete founder guide for your smart long-distance touch bracelet prototype pair.</p>
+
+  <div class="box">
+    <h3>🌐 Is it a Local Server or a Cloud Server?</h3>
+    <p><strong>It is a GLOBAL CLOUD SERVER (Not Local!).</strong></p>
+    <p>A "local server" only works inside your own apartment on your own home WiFi. If your partner goes outside or lives in another city, a local server stops working.</p>
+    <p>We built a <strong>Global Cloud Server</strong> for you on the internet. It runs 24/7 in the cloud. Whether you are on 4G mobile data in Rehab City or your partner is on WiFi in another country, both bracelets connect to this cloud server seamlessly!</p>
+  </div>
+
+  <h2>📊 How to See & Manage Everything in Real-Time</h2>
+  <p>You can inspect all touch signals passing through your Cloud Server live on your screen right now:</p>
+  <ul>
+    <li><strong>Live Relay Broker:</strong> Uses <strong>EMQX Cloud MQTT</strong> (Port 8084). It handles instant messages under 0.05 seconds.</li>
+    <li><strong>Live Web Server:</strong> Hosted at <span class="code-inline">https://band-beryl.vercel.app</span> (Vercel Serverless Node.js backend).</li>
+    <li><strong>Live Event Monitor:</strong> Open your instant test page anytime to inspect live signals!</li>
+  </ul>
+
+  <h2>🛠️ What to Do When Package Arrives Today</h2>
+  <div class="box">
+    <ol style="padding-left: 20px;">
+      <li><strong>Connect the wires:</strong> Plug ESP32 Pin D15 to Pushbutton, Pin D2 to Vibration Motor (+), and GND to (-).</li>
+      <li><strong>Plug ESP32 into Laptop:</strong> Use Micro-USB cable.</li>
+      <li><strong>Open Arduino IDE:</strong> Open file <span class="code-inline">firmware/bracelet_firmware_esp32.ino</span>, type your home WiFi name & password, and click Upload!</li>
+    </ol>
+  </div>
+
+  <h2>📁 Files Saved on Your Windows Desktop</h2>
+  <p>All files are inside: <span class="code-inline">C:\Users\haleemmamdouh\Desktop\Bond_Touch_Prototype</span></p>
+  <ul>
+    <li><strong>bond_touch_instant.html:</strong> Double click to run live 2-way touch simulation.</li>
+    <li><strong>firmware/:</strong> ESP32 Arduino code.</li>
+    <li><strong>mobile_app/:</strong> Flutter mobile app code.</li>
+    <li><strong>enclosure/:</strong> 3D printable bracelet box models.</li>
+  </ul>
+
+  <a href="file:///C:/Users/haleemmamdouh/Desktop/Bond_Touch_Prototype/bond_touch_instant.html" class="btn">Open Instant Live Test Page ❤️</a>
+</div>
+</body>
+</html>

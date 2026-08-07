@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bond Touch — Dual Waveform Studio</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0b0b0e;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body.flash-received { animation: flashBg 1s ease; }
+    @keyframes flashBg {
+      0%   { background-color: #3d0033; }
+      40%  { background-color: #1a0014; }
+      100% { background-color: #0b0b0e; }
+    }
+
+    .card {
+      background: #141419;
+      border: 1px solid #262633;
+      border-radius: 28px;
+      padding: 26px 18px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    p.subtitle {
+      color: #8a8a9e;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #09090c;
+      border: 1.5px solid #262633;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .btn-connect {
+      width: 100%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .btn-connect:active { transform: scale(0.97); }
+
+    #connectedView { display: none; }
+
+    /* STATUS */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(72,187,120,0.1);
+      border: 1px solid rgba(72,187,120,0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      color: #48bb78;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      background: #48bb78;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #48bb78;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* HEART */
+    .heart-wrap {
+      width: 90px; height: 90px;
+      margin: 0 auto 18px;
+    }
+
+    .touch-pad {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff416c, #7a0024);
+      border: 3px solid #ff416c;
+      box-shadow: 0 0 28px rgba(255,65,108,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: transform 0.1s;
+    }
+
+    .touch-pad:active { transform: scale(0.86); }
+
+    /* SLIDER */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #09090c;
+      border: 1px solid #262633;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+
+    .slider-label {
+      font-size: 11px;
+      color: #8a8a9e;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 5px;
+      background: #262633;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      box-shadow: 0 0 8px rgba(255,65,108,0.6);
+      cursor: pointer;
+    }
+
+    .slider-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ff416c;
+      min-width: 28px;
+      text-align: right;
+    }
+
+    /* GRAPH SECTION */
+    .graph-section {
+      margin-bottom: 14px;
+    }
+
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .graph-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .graph-title.light { color: #fbbf24; }
+    .graph-title.sound { color: #818cf8; }
+
+    .canvas-wrap {
+      width: 100%;
+      height: 110px;
+      position: relative;
+    }
+
+    canvas.wave-canvas {
+      width: 100%;
+      height: 100%;
+      background: #09090c;
+      border-radius: 12px;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    canvas.wave-canvas.light-canvas { border: 1px solid rgba(251,191,36,0.3); }
+    canvas.wave-canvas.sound-canvas { border: 1px solid rgba(129,140,248,0.3); }
+
+    /* PRESETS */
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .btn-preset {
+      background: #09090c;
+      border: 1px solid #262633;
+      color: #aaa;
+      padding: 8px 2px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: all 0.15s;
+    }
+
+    .btn-preset.light-preset:active { background: #fbbf24; color: #000; border-color: #fbbf24; }
+    .btn-preset.sound-preset:active { background: #818cf8; color: #fff; border-color: #818cf8; }
+
+    /* DIVIDER */
+    .divider {
+      height: 1px;
+      background: #1e1e26;
+      margin: 14px 0;
+    }
+
+    /* TRANSMIT */
+    .btn-transmit {
+      width: 100%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      border: none;
+      color: #fff;
+      padding: 15px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 24px rgba(255,65,108,0.3);
+    }
+
+    .btn-transmit:active { transform: scale(0.96); }
+
+    /* INCOMING PREVIEW */
+    .incoming-wrap {
+      display: none;
+      margin-bottom: 12px;
+    }
+
+    .incoming-wrap.visible { display: block; }
+
+    .incoming-header {
+      font-size: 11px;
+      color: #8a8a9e;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .incoming-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .incoming-canvas-wrap {
+      flex: 1;
+    }
+
+    .incoming-label-sm {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .incoming-label-sm.light { color: #fbbf24; }
+    .incoming-label-sm.sound { color: #818cf8; }
+
+    canvas.incoming-canvas {
+      width: 100%;
+      height: 40px;
+      background: #09090c;
+      border-radius: 8px;
+    }
+
+    canvas.incoming-canvas.light { border: 1px solid rgba(251,191,36,0.25); }
+    canvas.incoming-canvas.sound { border: 1px solid rgba(129,140,248,0.25); }
+
+    /* LOG */
+    .log-box {
+      background: #09090c;
+      border: 1px solid #262633;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #8a8a9e;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .log-box.received { border-color: #ff416c; color: #ff416c; background: rgba(255,65,108,0.07); font-weight: 600; }
+    .log-box.sent     { border-color: #48bb78; color: #48bb78; background: rgba(72,187,120,0.07); }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div class="card" id="connectView">
+    <h1>❤️ Bond Touch</h1>
+    <p class="subtitle">Dual Waveform Studio — Draw light and sound patterns independently for your partner's bracelet.</p>
+    <input type="text" id="nameInput" class="input-field" placeholder="Your Name (e.g. Ahmed)" />
+    <input type="text" id="roomInput" class="input-field" placeholder="6-Digit Pair Code (e.g. 102030)" />
+    <button class="btn-connect" onclick="connect()">Connect ❤️</button>
+  </div>
+
+  <!-- CONNECTED -->
+  <div class="card" id="connectedView">
+
+    <div style="text-align:center">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="userNameTag">ONLINE</span>
+      </div>
+    </div>
+
+    <!-- HEART TAP -->
+    <div class="heart-wrap">
+      <div class="touch-pad" id="mainHeartPad">❤️</div>
+    </div>
+
+    <!-- DURATION SLIDER -->
+    <div class="slider-row">
+      <span class="slider-label">⏱ Duration</span>
+      <input type="range" id="durationSlider" min="1" max="10" value="3" step="1" oninput="updateDuration(this.value)">
+      <div class="slider-value" id="durationVal">3s</div>
+    </div>
+
+    <!-- 💡 LIGHT GRAPH -->
+    <div class="graph-section">
+      <div class="graph-header">
+        <span class="graph-title light">💡 LIGHT WAVEFORM</span>
+        <span style="font-size:10px; color:#666; font-family:monospace">16 BARS</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="lightCanvas" class="wave-canvas light-canvas"></canvas>
+      </div>
+      <div class="preset-row">
+        <button class="btn-preset light-preset" id="lp1">🌅 Sunrise</button>
+        <button class="btn-preset light-preset" id="lp2">⚡ Strobe</button>
+        <button class="btn-preset light-preset" id="lp3">🌊 Wave</button>
+        <button class="btn-preset light-preset" id="lp4">❌ Clear</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 🔊 SOUND GRAPH -->
+    <div class="graph-section">
+      <div class="graph-header">
+        <span class="graph-title sound">🔊 SOUND WAVEFORM</span>
+        <span style="font-size:10px; color:#666; font-family:monospace">16 BARS</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="soundCanvas" class="wave-canvas sound-canvas"></canvas>
+      </div>
+      <div class="preset-row">
+        <button class="btn-preset sound-preset" id="sp1">🫀 Pulse</button>
+        <button class="btn-preset sound-preset" id="sp2">📶 Rising</button>
+        <button class="btn-preset sound-preset" id="sp3">🎵 Melody</button>
+        <button class="btn-preset sound-preset" id="sp4">❌ Clear</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- TRANSMIT -->
+    <button class="btn-transmit" id="btnTransmit">Transmit Both Waveforms ⚡</button>
+
+    <!-- INCOMING PREVIEW (read-only, never overwrites yours) -->
+    <div class="incoming-wrap" id="incomingWrap">
+      <div class="incoming-header">📥 INCOMING FROM PARTNER</div>
+      <div class="incoming-row">
+        <div class="incoming-canvas-wrap">
+          <div class="incoming-label-sm light">💡 Light</div>
+          <canvas id="inLightCanvas" class="incoming-canvas light"></canvas>
+        </div>
+        <div class="incoming-canvas-wrap">
+          <div class="incoming-label-sm sound">🔊 Sound</div>
+          <canvas id="inSoundCanvas" class="incoming-canvas sound"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-box" id="logBox">Draw your waveforms above and transmit!</div>
+  </div>
+
+<script>
+  let myName = "", topicName = "", mqttClient = null;
+  let durationSec = 3;
+
+  // YOUR graphs (you draw these — never overwritten by partner)
+  let myLight = [0, 60, 160, 255, 200, 120, 60, 20, 80, 180, 255, 180, 80, 20, 0, 0];
+  let mySound = [0, 0, 200, 255, 150, 50, 0, 100, 220, 255, 160, 60, 0, 0, 0, 0];
+
+  // PARTNER graphs (read-only preview)
+  let pLight = [], pSound = [];
+
+  let lightCanvas, lightCtx, soundCanvas, soundCtx;
+  let inLightCanvas, inLightCtx, inSoundCanvas, inSoundCtx;
+  let activeCanvas = null;
+  let isDrawing = false;
+
+  function updateDuration(v) {
+    durationSec = parseInt(v);
+    document.getElementById('durationVal').textContent = durationSec + 's';
+  }
+
+  function connect() {
+    myName = document.getElementById('nameInput').value.trim();
+    const code = document.getElementById('roomInput').value.trim();
+    if (!myName || !code) { alert("Enter name and code!"); return; }
+    topicName = "bondtouch/pair_" + code;
+
+    document.getElementById('connectView').style.display = 'none';
+    document.getElementById('connectedView').style.display = 'block';
+    document.getElementById('userNameTag').textContent = "ONLINE: " + myName.toUpperCase();
+
+    setTimeout(initUI, 120);
+
+    mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      clientId: 'bt_' + Math.random().toString(16).substr(2, 8)
+    });
+
+    mqttClient.on('connect', () => {
+      setLog("⚡ Connected! Draw your waveforms and transmit.", "");
+      mqttClient.subscribe(topicName);
+    });
+
+    mqttClient.on('message', (topic, msg) => {
+      try {
+        const p = JSON.parse(msg.toString());
+        if (!p.sender || p.sender.toLowerCase() === myName.toLowerCase()) return;
+        if (p.type === 'waveform') {
+          onPartnerWaveform(p.sender, p.light, p.sound, p.duration || 1);
+        } else {
+          onPartnerTouch(p.sender);
+        }
+      } catch(e) {}
+    });
+  }
+
+  function initUI() {
+    // Main canvases
+    lightCanvas = init2DCanvas('lightCanvas');
+    lightCtx    = lightCanvas.getContext('2d');
+    soundCanvas = init2DCanvas('soundCanvas');
+    soundCtx    = soundCanvas.getContext('2d');
+
+    // Incoming preview canvases
+    inLightCanvas = init2DCanvas('inLightCanvas');
+    inLightCtx    = inLightCanvas.getContext('2d');
+    inSoundCanvas = init2DCanvas('inSoundCanvas');
+    inSoundCtx    = inSoundCanvas.getContext('2d');
+
+    drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)');
+    drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)');
+
+    // Touch events for light canvas
+    addDrawListeners(lightCanvas, myLight, () => drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)'));
+    // Touch events for sound canvas
+    addDrawListeners(soundCanvas, mySound, () => drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)'));
+
+    // Buttons
+    document.getElementById('mainHeartPad').addEventListener('click', sendHeartTap);
+    document.getElementById('btnTransmit').addEventListener('click', sendWaveforms);
+
+    // Light presets
+    document.getElementById('lp1').addEventListener('click', () => { myLight = [0,10,40,100,170,220,255,220,170,100,40,10,0,0,0,0]; drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)'); });
+    document.getElementById('lp2').addEventListener('click', () => { myLight = [255,0,255,0,255,0,255,0,255,0,255,0,255,0,255,0]; drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)'); });
+    document.getElementById('lp3').addEventListener('click', () => { myLight = [10,30,70,120,180,220,255,230,190,130,80,40,15,5,0,0]; drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)'); });
+    document.getElementById('lp4').addEventListener('click', () => { myLight = new Array(16).fill(0); drawCanvas(lightCtx, lightCanvas, myLight, '#fbbf24', 'rgba(251,191,36,0.12)'); });
+
+    // Sound presets
+    document.getElementById('sp1').addEventListener('click', () => { mySound = [0,60,160,255,120,30,0,100,255,180,40,0,0,0,0,0]; drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)'); });
+    document.getElementById('sp2').addEventListener('click', () => { mySound = [0,20,50,90,130,170,200,230,255,230,200,170,130,90,50,0]; drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)'); });
+    document.getElementById('sp3').addEventListener('click', () => { mySound = [180,60,220,40,255,80,200,30,160,255,100,180,50,230,70,0]; drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)'); });
+    document.getElementById('sp4').addEventListener('click', () => { mySound = new Array(16).fill(0); drawCanvas(soundCtx, soundCanvas, mySound, '#818cf8', 'rgba(129,140,248,0.12)'); });
+  }
+
+  function init2DCanvas(id) {
+    const c = document.getElementById(id);
+    c.width  = c.offsetWidth;
+    c.height = c.offsetHeight;
+    return c;
+  }
+
+  // Pre-cached gradients per canvas (avoids recreating on every frame)
+  const gradientCache = new Map();
+
+  function getGradient(ctx, canvas, topColor, baseColor) {
+    const key = canvas.id + topColor;
+    if (!gradientCache.has(key)) {
+      const g = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      g.addColorStop(0, baseColor);
+      g.addColorStop(1, topColor);
+      gradientCache.set(key, g);
+    }
+    return gradientCache.get(key);
+  }
+
+  // Pointer Events API — works for mouse AND touch, isolated per canvas
+  // Preset button clicks CANNOT bleed into canvas drawing state
+  function addDrawListeners(canvas, waveArray, redraw) {
+    let rafPending = false;
+
+    const getPoint = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const idx = Math.floor((x / canvas.width) * 16);
+      if (idx >= 0 && idx < 16) {
+        waveArray[idx] = Math.floor(Math.max(0, Math.min(255, ((canvas.height - y) / canvas.height) * 255)));
+        // Throttle redraws with requestAnimationFrame — no lag!
+        if (!rafPending) {
+          rafPending = true;
+          requestAnimationFrame(() => { redraw(); rafPending = false; });
+        }
+      }
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      // Only respond to direct canvas interaction, not button clicks
+      canvas.setPointerCapture(e.pointerId);
+      isDrawing = true;
+      activeCanvas = canvas;
+      getPoint(e);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (isDrawing && activeCanvas === canvas) getPoint(e);
+    });
+
+    canvas.addEventListener('pointerup',   () => { isDrawing = false; activeCanvas = null; });
+    canvas.addEventListener('pointercancel', () => { isDrawing = false; activeCanvas = null; });
+  }
+
+  function drawCanvas(ctx, canvas, wave, topColor, baseColor) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const bw = canvas.width / 16;
+    // Use cached gradient — no object creation per frame!
+    const g = getGradient(ctx, canvas, topColor, baseColor);
+    for (let i = 0; i < 16; i++) {
+      const h = (wave[i] / 255) * canvas.height;
+      if (h < 1) continue; // skip empty bars
+      const x = i * bw;
+      const y = canvas.height - h;
+      ctx.fillStyle = g;
+      ctx.fillRect(x + 2, y, bw - 4, h);
+      // White peak indicator
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(x + 2, y, bw - 4, 2);
+    }
+  }
+
+  function sendWaveforms() {
+    if (!mqttClient) return;
+    if (navigator.vibrate) navigator.vibrate(50);
+    setLog(`⚡ Dual waveform sent (${durationSec}s)!`, 'sent');
+
+    mqttClient.publish(topicName, JSON.stringify({
+      type:      'waveform',
+      light:     myLight.join(','),
+      sound:     mySound.join(','),
+      duration:  durationSec,
+      sender:    myName,
+      timestamp: Date.now()
+    }));
+  }
+
+  function sendHeartTap() {
+    if (!mqttClient) return;
+    if (navigator.vibrate) navigator.vibrate(50);
+    setLog("❤️ Heart tap sent!", 'sent');
+    mqttClient.publish(topicName, JSON.stringify({ sender: myName, timestamp: Date.now() }));
+  }
+
+  // Partner waveform → ONLY goes into preview canvases, NEVER touches myLight or mySound!
+  function onPartnerWaveform(sender, lightData, soundData, dur) {
+    pLight = (lightData || '').split(',').map(Number);
+    pSound = (soundData || '').split(',').map(Number);
+
+    document.getElementById('incomingWrap').classList.add('visible');
+
+    inLightCanvas.width = inLightCanvas.offsetWidth;
+    inLightCanvas.height = inLightCanvas.offsetHeight;
+    inSoundCanvas.width  = inSoundCanvas.offsetWidth;
+    inSoundCanvas.height = inSoundCanvas.offsetHeight;
+
+    drawCanvas(inLightCtx, inLightCanvas, pLight, '#fbbf24', 'rgba(251,191,36,0.1)');
+    drawCanvas(inSoundCtx, inSoundCanvas, pSound, '#818cf8', 'rgba(129,140,248,0.1)');
+
+    flashBody();
+    if (navigator.vibrate) navigator.vibrate([100,50,200,50,100]);
+    setLog(`🎨 Dual waveform from ${sender} (${dur}s) — preview below ↓`, 'received');
+  }
+
+  function onPartnerTouch(sender) {
+    flashBody();
+    if (navigator.vibrate) navigator.vibrate([150,70,150,70,300]);
+    setLog(`❤️ Touch from ${sender}!`, 'received');
+  }
+
+  function flashBody() {
+    document.body.classList.remove('flash-received');
+    void document.body.offsetWidth;
+    document.body.classList.add('flash-received');
+  }
+
+  function setLog(msg, cls) {
+    const lb = document.getElementById('logBox');
+    lb.textContent = msg;
+    lb.className = 'log-box' + (cls ? ' ' + cls : '');
+  }
+</script>
+
+</body>
+</html>

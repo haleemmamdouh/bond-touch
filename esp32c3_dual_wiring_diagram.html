@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dual ESP32-C3 SuperMini — Side-by-Side Prototype Wiring Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0b0b0e;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    p.subtitle {
+      color: #8a8a9e;
+      font-size: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .diagram-container {
+      background: #141419;
+      border: 1px solid #262633;
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 960px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      max-height: 580px;
+      background: #09090c;
+      border-radius: 16px;
+      border: 1px solid #1e1e28;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #a0a0b8;
+    }
+
+    .color-box {
+      width: 16px;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .unit-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚡ Dual ESP32-C3 Wireless Prototype Diagram</h1>
+  <p class="subtitle">Complete Side-by-Side Hardware Schematic: Bracelet Unit A (Ahmed) & Bracelet Unit B (Partner)</p>
+
+  <div class="diagram-container">
+    <svg viewBox="0 0 920 540" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- BREADBOARD BACKGROUND -->
+      <rect x="30" y="30" width="860" height="480" rx="16" fill="#181820" stroke="#2c2c3a" stroke-width="2"/>
+      
+      <pattern id="breadboardPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="10" cy="10" r="3" fill="#09090c" stroke="#22222e" stroke-width="1"/>
+      </pattern>
+      <rect x="50" y="50" width="820" height="440" fill="url(#breadboardPattern)" opacity="0.6"/>
+
+      <!-- ================= BRACELET UNIT A (LEFT SIDE) ================= -->
+      <g id="unitA">
+        <!-- Title Badge -->
+        <rect x="110" y="70" width="240" height="30" rx="6" fill="rgba(255, 65, 108, 0.15)" stroke="#ff416c" stroke-width="1"/>
+        <text x="230" y="90" fill="#ff416c" font-size="13" font-weight="800" text-anchor="middle" font-family="Outfit">BRACELET UNIT A (AHMED)</text>
+
+        <!-- ESP32 Unit A Board -->
+        <g transform="translate(130, 180)">
+          <rect x="0" y="0" width="180" height="170" rx="10" fill="#000000" stroke="#ff416c" stroke-width="2"/>
+          <rect x="50" y="35" width="80" height="75" rx="6" fill="#1a1a24" stroke="#333344" stroke-width="1.5"/>
+          <text x="90" y="75" fill="#8888aa" font-size="10" font-weight="700" text-anchor="middle" font-family="Outfit">ESP32-C3</text>
+          <text x="90" y="90" fill="#ff416c" font-size="10" font-weight="800" text-anchor="middle" font-family="Outfit">UNIT A</text>
+
+          <!-- PINS -->
+          <circle cx="10" cy="20" r="5" fill="#ef4444"/><text x="22" y="24" fill="#fff" font-size="9" font-family="JetBrains Mono">3V3</text>
+          <circle cx="10" cy="55" r="5" fill="#333"/><text x="22" y="59" fill="#fff" font-size="9" font-family="JetBrains Mono">GND</text>
+          <circle cx="10" cy="95" r="5" fill="#ff416c"/><text x="22" y="99" fill="#fff" font-size="9" font-family="JetBrains Mono">IO0 (R)</text>
+          <circle cx="10" cy="135" r="5" fill="#22c55e"/><text x="22" y="139" fill="#fff" font-size="9" font-family="JetBrains Mono">IO1 (G)</text>
+
+          <circle cx="170" cy="95" r="5" fill="#f97316"/><text x="158" y="99" fill="#fff" font-size="9" font-anchor="end" font-family="JetBrains Mono">IO4 (TOUCH)</text>
+          <circle cx="170" cy="135" r="5" fill="#333"/><text x="158" y="139" fill="#fff" font-size="9" font-anchor="end" font-family="JetBrains Mono">GND</text>
+        </g>
+
+        <!-- LED Module A -->
+        <g transform="translate(60, 120)">
+          <rect x="0" y="0" width="90" height="50" rx="6" fill="#14141f" stroke="#3b82f6" stroke-width="1.5"/>
+          <circle cx="45" cy="20" r="10" fill="#ff416c"/>
+          <text x="45" y="42" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">LED A</text>
+        </g>
+
+        <!-- Touch Sensor A -->
+        <g transform="translate(340, 320)">
+          <rect x="0" y="0" width="80" height="60" rx="6" fill="#14141f" stroke="#f97316" stroke-width="1.5"/>
+          <circle cx="40" cy="25" r="12" fill="#ef4444"/>
+          <text x="40" y="52" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">TOUCH A</text>
+        </g>
+      </g>
+
+      <!-- ================= BRACELET UNIT B (RIGHT SIDE) ================= -->
+      <g id="unitB">
+        <!-- Title Badge -->
+        <rect x="570" y="70" width="240" height="30" rx="6" fill="rgba(192, 132, 252, 0.15)" stroke="#c084fc" stroke-width="1"/>
+        <text x="690" y="90" fill="#c084fc" font-size="13" font-weight="800" text-anchor="middle" font-family="Outfit">BRACELET UNIT B (PARTNER)</text>
+
+        <!-- ESP32 Unit B Board -->
+        <g transform="translate(590, 180)">
+          <rect x="0" y="0" width="180" height="170" rx="10" fill="#000000" stroke="#c084fc" stroke-width="2"/>
+          <rect x="50" y="35" width="80" height="75" rx="6" fill="#1a1a24" stroke="#333344" stroke-width="1.5"/>
+          <text x="90" y="75" fill="#8888aa" font-size="10" font-weight="700" text-anchor="middle" font-family="Outfit">ESP32-C3</text>
+          <text x="90" y="90" fill="#c084fc" font-size="10" font-weight="800" text-anchor="middle" font-family="Outfit">UNIT B</text>
+
+          <!-- PINS -->
+          <circle cx="10" cy="20" r="5" fill="#ef4444"/><text x="22" y="24" fill="#fff" font-size="9" font-family="JetBrains Mono">3V3</text>
+          <circle cx="10" cy="55" r="5" fill="#333"/><text x="22" y="59" fill="#fff" font-size="9" font-family="JetBrains Mono">GND</text>
+          <circle cx="10" cy="95" r="5" fill="#ff416c"/><text x="22" y="99" fill="#fff" font-size="9" font-family="JetBrains Mono">IO0 (R)</text>
+          <circle cx="10" cy="135" r="5" fill="#22c55e"/><text x="22" y="139" fill="#fff" font-size="9" font-family="JetBrains Mono">IO1 (G)</text>
+
+          <circle cx="170" cy="95" r="5" fill="#f97316"/><text x="158" y="99" fill="#fff" font-size="9" font-anchor="end" font-family="JetBrains Mono">IO4 (TOUCH)</text>
+          <circle cx="170" cy="135" r="5" fill="#333"/><text x="158" y="139" fill="#fff" font-size="9" font-anchor="end" font-family="JetBrains Mono">GND</text>
+        </g>
+
+        <!-- LED Module B -->
+        <g transform="translate(520, 120)">
+          <rect x="0" y="0" width="90" height="50" rx="6" fill="#14141f" stroke="#3b82f6" stroke-width="1.5"/>
+          <circle cx="45" cy="20" r="10" fill="#c084fc"/>
+          <text x="45" y="42" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">LED B</text>
+        </g>
+
+        <!-- Touch Sensor B -->
+        <g transform="translate(800, 320)">
+          <rect x="0" y="0" width="80" height="60" rx="6" fill="#14141f" stroke="#f97316" stroke-width="1.5"/>
+          <circle cx="40" cy="25" r="12" fill="#ef4444"/>
+          <text x="40" y="52" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">TOUCH B</text>
+        </g>
+      </g>
+
+      <!-- WIRELESS CLOUD BRIDGE INDICATOR -->
+      <g transform="translate(410, 200)">
+        <path d="M 0 0 L 100 0" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6"/>
+        <circle cx="50" cy="0" r="16" fill="#09090c" stroke="#60a5fa" stroke-width="2"/>
+        <text x="50" y="5" fill="#60a5fa" font-size="12" font-weight="800" text-anchor="middle">⚡</text>
+        <text x="50" y="-22" fill="#60a5fa" font-size="10" font-weight="700" text-anchor="middle" font-family="JetBrains Mono">BLE + MQTT CLOUD</text>
+        <text x="50" y="32" fill="#8888aa" font-size="9" font-weight="600" text-anchor="middle" font-family="Outfit">ZERO PHYSICAL WIRES</text>
+      </g>
+
+    </svg>
+
+    <div class="legend">
+      <div class="legend-item"><span class="unit-badge" style="background:rgba(255, 65, 108, 0.2); color:#ff416c;">ESP32 UNIT A: BondTouch_ESP32_A</span></div>
+      <div class="legend-item"><span class="unit-badge" style="background:rgba(192, 132, 252, 0.2); color:#c084fc;">ESP32 UNIT B: BondTouch_ESP32_B</span></div>
+      <div class="legend-item"><span class="unit-badge" style="background:rgba(96, 165, 250, 0.2); color:#60a5fa;">MQTT PAIR CODE: 102030</span></div>
+    </div>
+  </div>
+
+</body>
+</html>

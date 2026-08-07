@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bond Touch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d10;
+      font-family: 'Inter', sans-serif;
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background 0.15s;
+    }
+
+    body.flash-bg {
+      animation: screenFlash 0.8s ease forwards;
+    }
+
+    @keyframes screenFlash {
+      0%   { background: #0d0d10; }
+      15%  { background: #e85d9a; }
+      40%  { background: #4a1035; }
+      100% { background: #0d0d10; }
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    /* SETUP CARD */
+    .card {
+      background: #16161c;
+      border: 1px solid #2a2a38;
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+    }
+
+    .logo { font-size: 48px; margin-bottom: 12px; }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #e85d9a, #7c5cbf);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle { color: #888898; font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+
+    .input-group { margin-bottom: 14px; text-align: left; }
+    .input-label { font-size: 12px; color: #888898; margin-bottom: 6px; display: block; }
+
+    input {
+      width: 100%;
+      background: #0d0d10;
+      border: 1px solid #2a2a38;
+      border-radius: 12px;
+      color: #e8e8f0;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      padding: 14px 16px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus { border-color: #e85d9a; }
+    input::placeholder { color: #555565; }
+
+    .btn-start {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #e85d9a, #7c5cbf);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn-start:active { transform: scale(0.97); }
+
+    /* MAIN SCREEN */
+    #mainScreen { display: none; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #48bb78;
+      animation: dotPulse 2s infinite;
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .status-text { font-size: 11px; color: #48bb78; letter-spacing: 0.05em; }
+
+    .user-display { font-size: 20px; font-weight: 700; margin: 16px 0 4px; }
+    .pair-display { font-size: 12px; color: #e85d9a; font-family: monospace; letter-spacing: 0.15em; margin-bottom: 32px; }
+
+    /* TOUCH BUTTON */
+    .touch-zone { display: flex; justify-content: center; margin-bottom: 12px; }
+
+    .touch-btn {
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #e85d9a, #7c5cbf);
+      box-shadow: 0 0 40px rgba(232, 93, 154, 0.3);
+      cursor: pointer;
+      font-size: 56px;
+      line-height: 160px;
+      transition: transform 0.12s, box-shadow 0.12s;
+      animation: btnGlow 3s ease-in-out infinite;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    @keyframes btnGlow {
+      0%, 100% { box-shadow: 0 0 30px rgba(232,93,154,0.25); }
+      50% { box-shadow: 0 0 60px rgba(232,93,154,0.55); }
+    }
+
+    .touch-btn:active { transform: scale(0.88); box-shadow: 0 0 15px rgba(232,93,154,0.15); }
+
+    .touch-label {
+      font-size: 11px;
+      color: #888898;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    /* EVENT LOG */
+    .event-box {
+      background: #0d0d10;
+      border: 1px solid #2a2a38;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 14px;
+      color: #888898;
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, color 0.3s;
+    }
+
+    .event-box.highlight {
+      border-color: #e85d9a;
+      color: #e85d9a;
+    }
+
+    .event-box.sent {
+      border-color: #48bb78;
+      color: #48bb78;
+    }
+
+    /* LED */
+    .led-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; }
+
+    .led {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #222;
+      transition: all 0.15s;
+    }
+
+    .led.on {
+      background: #48bb78;
+      box-shadow: 0 0 12px #48bb78;
+    }
+
+    .led.pink {
+      background: #e85d9a;
+      box-shadow: 0 0 12px #e85d9a;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- SETUP -->
+  <div class="card" id="setupScreen">
+    <div class="logo">❤️</div>
+    <h1>Bond Touch</h1>
+    <p class="subtitle">Enter your name and a pair code.<br>Your partner uses the <strong>same pair code</strong> but a <strong>different name</strong>.</p>
+
+    <div class="input-group">
+      <label class="input-label">Your Name</label>
+      <input id="nameInput" type="text" placeholder="e.g. Ahmed" maxlength="20">
+    </div>
+    <div class="input-group">
+      <label class="input-label">Shared Pair Code</label>
+      <input id="codeInput" type="text" placeholder="e.g. 102030" maxlength="20">
+    </div>
+
+    <button class="btn-start" onclick="startApp()">Connect ❤️</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="card hidden" id="mainScreen">
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span class="status-text">CONNECTED</span>
+    </div>
+
+    <div class="led-row">
+      <div class="led" id="led1"></div>
+      <div class="led" id="led2"></div>
+      <div class="led" id="led3"></div>
+    </div>
+
+    <div class="user-display" id="userDisplay"></div>
+    <div class="pair-display" id="pairDisplay"></div>
+
+    <div class="touch-zone">
+      <button class="touch-btn" id="touchBtn" onclick="sendTouch()">❤️</button>
+    </div>
+    <div class="touch-label">Tap to Send Touch</div>
+
+    <div class="event-box" id="eventBox">Waiting for touches...</div>
+  </div>
+</div>
+
+<script>
+  let myName = '';
+  let myInbox = '';
+  let partnerInbox = '';
+  let polling = null;
+
+  function startApp() {
+    myName = document.getElementById('nameInput').value.trim();
+    const code = document.getElementById('codeInput').value.trim();
+
+    if (!myName || !code) {
+      alert('Please enter your name and a pair code!');
+      return;
+    }
+
+    // Each person has their OWN inbox based on name + code
+    myInbox = 'bondtouch-' + code + '-' + myName.toLowerCase();
+    // Partner inbox = same code, but we send to ALL on this code
+    // We use a shared channel where we tag messages with sender name
+    const sharedChannel = 'bondtouch-' + code;
+    partnerInbox = sharedChannel;
+    myInbox = sharedChannel;
+
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('mainScreen').classList.remove('hidden');
+    document.getElementById('userDisplay').textContent = '👤 ' + myName;
+    document.getElementById('pairDisplay').textContent = 'PAIR: ' + code;
+
+    // Start polling every 2 seconds
+    polling = setInterval(checkForTouch, 2000);
+  }
+
+  async function sendTouch() {
+    // Visual feedback on own button
+    const btn = document.getElementById('touchBtn');
+    btn.style.transform = 'scale(0.85)';
+    setTimeout(() => btn.style.transform = '', 150);
+    flashLeds('sent');
+
+    const box = document.getElementById('eventBox');
+    box.textContent = '✅ Touch sent!';
+    box.className = 'event-box sent';
+
+    try {
+      await fetch('https://ntfy.sh/' + partnerInbox, {
+        method: 'POST',
+        body: myName
+      });
+    } catch (e) {
+      box.textContent = '❌ Network error!';
+    }
+  }
+
+  async function checkForTouch() {
+    try {
+      const res = await fetch('https://ntfy.sh/' + myInbox + '/json?poll=1&since=3s');
+      const text = await res.text();
+
+      if (text.trim().length < 5) return; // No messages
+
+      // ntfy returns one JSON per line
+      const lines = text.trim().split('\n');
+      for (const line of lines) {
+        try {
+          const msg = JSON.parse(line);
+          // Only react if the sender is NOT me
+          if (msg.message && msg.message.toLowerCase() !== myName.toLowerCase()) {
+            onTouchReceived(msg.message);
+            return; // Process one touch at a time
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  function onTouchReceived(senderName) {
+    // Flash screen pink!
+    document.body.classList.remove('flash-bg');
+    void document.body.offsetWidth; // Force reflow
+    document.body.classList.add('flash-bg');
+    setTimeout(() => document.body.classList.remove('flash-bg'), 900);
+
+    // Flash LEDs
+    flashLeds('received');
+
+    // Vibrate phone! (Works on Android Chrome)
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 80, 200, 80, 300]);
+    }
+
+    // Update event box
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const box = document.getElementById('eventBox');
+    box.textContent = '❤️ ' + senderName + ' touched you at ' + now + '!';
+    box.className = 'event-box highlight';
+  }
+
+  function flashLeds(type) {
+    const leds = [document.getElementById('led1'), document.getElementById('led2'), document.getElementById('led3')];
+    const cls = type === 'received' ? 'pink' : 'on';
+
+    leds.forEach((led, i) => {
+      setTimeout(() => {
+        led.classList.add(cls);
+        setTimeout(() => led.classList.remove(cls), 300);
+      }, i * 200);
+    });
+  }
+</script>
+
+</body>
+</html>

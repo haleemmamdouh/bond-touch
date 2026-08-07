@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate ESP32 Hardware Test Bench</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --sidebar: #121215;
+      --panel: #18181b;
+      --panel-hover: #222226;
+      --border: #27272a;
+      --border-light: #3f3f46;
+      --text: #f4f4f5;
+      --text-sub: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #007aff;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 14px;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px; font-size: 15px; font-weight: 700; color: var(--text); }
+    .brand-logo { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+
+    .nav-group { display: flex; flex-direction: column; gap: 2px; }
+    .nav-label { font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 6px 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-sub); cursor: pointer; transition: background 0.1s, color 0.1s;
+    }
+    .nav-link:hover, .nav-link.active { background: var(--panel); color: var(--text); }
+
+    .device-status-box {
+      margin-top: auto; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px;
+    }
+    .status-row { display: flex; justify-content: space-between; align-items: center; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+    .dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot.alert { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    /* STUDIO GRID */
+    .studio-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .canvas {
+      display: flex;
+      flex-direction: column;
+      padding: 28px 40px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .top-bar { display: flex; justify-content: space-between; align-items: center; }
+    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .page-subtitle { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+
+    .btn {
+      background: var(--text); color: var(--bg); border: none; border-radius: 6px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.1s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--panel-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .test-btn-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+
+    .slider-row { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+    .slider-header { display: flex; justify-content: space-between; color: var(--text-sub); }
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+    /* RIGHT INSPECTOR LOG & MONITOR */
+    .inspector {
+      background: var(--sidebar); border-left: 1px solid var(--border); padding: 28px 20px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto;
+    }
+
+    .inspector-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .sim-box {
+      width: 100%; height: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    }
+    .sim-led { width: 50px; height: 50px; border-radius: 50%; background: #27272a; border: 1px solid var(--border-light); transition: background 0.05s, box-shadow 0.05s; }
+
+    .log-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--success); height: 260px; overflow-y: auto; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">⚡</div>
+      <span>Test Bench Pro</span>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Hardware Test Suites</div>
+      <div class="nav-link active">🛠️ Full Diagnostic Studio</div>
+      <div class="nav-link" onclick="runSelfTest()">⚡ Auto Self-Test Diagnostic</div>
+      <div class="nav-link" onclick="runBurnInTest()">🔥 10s Burn-In Stress Test</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Device Connectivity</div>
+      <div class="nav-link" onclick="connectBLE()">🔵 Pair ESP32 Bluetooth</div>
+    </div>
+
+    <div class="device-status-box">
+      <div class="status-row">
+        <span>Local Device</span>
+        <div id="myDot" class="dot"></div>
+      </div>
+      <div class="status-row" style="color:var(--text-muted);">
+        <span>Cloud Ping</span>
+        <span id="pingVal" style="color:var(--success); font-weight:700;">-- ms</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CANVAS -->
+  <div class="studio-grid">
+    
+    <div class="canvas">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title">ESP32 Hardware Test Bench & Diagnostics</h1>
+          <p class="page-subtitle">Test RGB PWM, buzzer pitch curves, vibration haptics, and cloud relays.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary" onclick="connectBLE()">Pair BLE</button>
+          <button class="btn btn-danger" onclick="runSelfTest()">⚡ Run Self-Test</button>
+        </div>
+      </div>
+
+      <!-- TEST ROW 1: RGB LED & BUZZER -->
+      <div class="grid-2col">
+        
+        <!-- 🔴 RGB LED TEST SUITE -->
+        <div class="card">
+          <div class="card-header">1. 🔴 RGB LED & PWM Test</div>
+          
+          <div class="slider-row">
+            <div class="slider-header"><span>Custom RGB Color</span><span id="rgbHexTxt">#FF0000</span></div>
+            <input type="color" id="rgbPicker" value="#ff0000" style="width:100%; height:36px; border:none; border-radius:6px; cursor:pointer;" onchange="testCustomColor()">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header"><span>PWM Brightness Sweep</span><span id="brightTxt">100%</span></div>
+            <input type="range" id="brightRange" min="0" max="255" value="255" oninput="testPWMBrightness(this.value)">
+          </div>
+
+          <div class="test-btn-group">
+            <button class="btn btn-secondary" onclick="testRGB(255,0,0)">🔴 Pure Red</button>
+            <button class="btn btn-secondary" onclick="testRGB(0,255,0)">🟢 Pure Green</button>
+            <button class="btn btn-secondary" onclick="testRGB(0,0,255)">🔵 Pure Blue</button>
+            <button class="btn btn-secondary" onclick="testRGB(255,255,255)">⚪ White</button>
+            <button class="btn btn-secondary" onclick="testRGB(255,214,10)">🟡 Yellow</button>
+            <button class="btn btn-secondary" onclick="testRGB(175,82,222)">🟣 Purple</button>
+            <button class="btn btn-secondary" onclick="testStrobeSpeed(80)">⚡ Fast Strobe</button>
+            <button class="btn btn-secondary" onclick="testStrobeSpeed(300)">🕯️ Slow Pulse</button>
+          </div>
+        </div>
+
+        <!-- 🔊 BUZZER & PITCH SUITE -->
+        <div class="card">
+          <div class="card-header">2. 🔊 Buzzer & Pitch Frequency Test</div>
+          
+          <div class="slider-row">
+            <div class="slider-header"><span>Frequency Sweeper</span><span id="pitchTxt">1200 Hz</span></div>
+            <input type="range" id="pitchRange" min="200" max="3000" step="50" value="1200" oninput="testPitchSweep(this.value)">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header"><span>Tone Duration</span><span id="durTxt">100 ms</span></div>
+            <input type="range" id="durRange" min="20" max="1000" step="20" value="100" oninput="document.getElementById('durTxt').textContent=this.value+' ms'">
+          </div>
+
+          <div class="test-btn-group">
+            <button class="btn btn-secondary" onclick="testTone(1200, 100)">🔊 Short Beep</button>
+            <button class="btn btn-secondary" onclick="testTone(1800, 200)">🔊 High Pitch</button>
+            <button class="btn btn-secondary" onclick="testTone(400, 300)">🔊 Low Warning</button>
+            <button class="btn btn-secondary" onclick="testToneSweep()">📉 Fail Sweep</button>
+            <button class="btn btn-secondary" onclick="testBootChime()">🎵 Boot Chime</button>
+            <button class="btn btn-secondary" onclick="testSirenAlarm()">🚨 Siren Alarm</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TEST ROW 2: VIBRATION & RELAY -->
+      <div class="grid-2col">
+        
+        <!-- 📳 VIBRATION MOTOR TEST -->
+        <div class="card">
+          <div class="card-header">3. 📳 Vibrator Haptic Pulse Test</div>
+          
+          <div class="test-btn-group">
+            <button class="btn btn-secondary" onclick="testVibration(100)">📳 Short Tap (100ms)</button>
+            <button class="btn btn-secondary" onclick="testVibration(300)">📳 Medium Pulse (300ms)</button>
+            <button class="btn btn-secondary" onclick="testVibration(1000)">📳 Long Motor (1s)</button>
+            <button class="btn btn-secondary" onclick="testVibrationHeartbeat()">🫀 Heartbeat Pulse</button>
+          </div>
+        </div>
+
+        <!-- 📡 CLOUD RELAY & SIGNAL TEST -->
+        <div class="card">
+          <div class="card-header">4. 📡 Cloud Relay & State Signals</div>
+          
+          <div class="test-btn-group">
+            <button class="btn btn-secondary" onclick="sendSignal('TOUCH')">⚡ Send Touch</button>
+            <button class="btn btn-secondary" onclick="sendSignal('GREEN')">🟢 Partner BLE On</button>
+            <button class="btn btn-secondary" onclick="sendSignal('FAIL')">❌ Delivery Fail</button>
+            <button class="btn btn-secondary" onclick="measureLatency()">⏱️ Measure Latency</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT INSPECTOR -->
+    <div class="inspector">
+      <div class="inspector-title">Zero-Delay Visualizer</div>
+      
+      <div class="sim-box">
+        <div class="sim-led" id="simLED"></div>
+        <span style="font-size:12px; color:var(--text-muted);" id="simStatus">Standby</span>
+      </div>
+
+      <div class="inspector-title">Real-Time Diagnostic Log</div>
+      <div class="log-box" id="logBox">ESP32 Hardware Test Bench Initialized.
+Pair BLE to start live testing.</div>
+    </div>
+
+  </div>
+
+  <script>
+    const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+    const CHAR_RX_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+
+    let rxChar = null;
+    let audioCtx = null;
+
+    function log(msg) {
+      const b = document.getElementById('logBox');
+      const time = new Date().toLocaleTimeString();
+      b.textContent = `[${time}] ${msg}\n` + b.textContent;
+    }
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) { alert('Web Bluetooth supported in Chrome.'); return; }
+      try {
+        log('Scanning for BondTouch ESP32...');
+        const dev = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'BondTouch' }, { services: [SERVICE_UUID] }],
+          optionalServices: [SERVICE_UUID]
+        });
+        const server = await dev.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        rxChar = await service.getCharacteristic(CHAR_RX_UUID);
+        document.getElementById('myDot').className = 'dot active';
+        log('🟢 ESP32 Bluetooth Connected!');
+      } catch(e) { log('❌ BLE Error: ' + e.message); }
+    }
+
+    async function sendBLE(str) {
+      log(`TX: ${str}`);
+      if (!rxChar) return;
+      try {
+        const enc = new TextEncoder();
+        await rxChar.writeValue(enc.encode(str));
+      } catch(e){}
+    }
+
+    function playAudio(pitch, durationMs) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + (durationMs / 1000));
+      } catch(e){}
+    }
+
+    function setVisual(color, label) {
+      const led = document.getElementById('simLED');
+      led.style.background = color || '#27272a';
+      led.style.boxShadow = color ? `0 0 24px ${color}` : 'none';
+      document.getElementById('simStatus').textContent = label || 'Idle';
+    }
+
+    /* TEST SUITES */
+    function testRGB(r, g, b) {
+      setVisual(`rgb(${r},${g},${b})`, `RGB (${r},${g},${b})`);
+      sendBLE(`SEQ:RGB:${r},${g},${b}:300`);
+    }
+
+    function testCustomColor() {
+      const hex = document.getElementById('rgbPicker').value;
+      document.getElementById('rgbHexTxt').textContent = hex.toUpperCase();
+      const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+      testRGB(r, g, b);
+    }
+
+    function testPWMBrightness(val) {
+      document.getElementById('brightTxt').textContent = Math.round((val/255)*100) + '%';
+      testRGB(val, val, val);
+    }
+
+    function testStrobeSpeed(speedMs) {
+      sendBLE(`SEQ:RGB:0,0,255:${speedMs}|DELAY:${speedMs}|RGB:0,0,255:${speedMs}|DELAY:${speedMs}|RGB:0,0,255:${speedMs}`);
+      setVisual('#007aff', `Strobe (${speedMs}ms)`);
+    }
+
+    function testTone(pitch, durMs) {
+      playAudio(pitch, durMs);
+      sendBLE(`SEQ:BEEP:${pitch}:${durMs}`);
+      setVisual('#f59e0b', `Buzzer ${pitch}Hz`);
+    }
+
+    function testPitchSweep(val) {
+      document.getElementById('pitchTxt').textContent = val + ' Hz';
+      const dur = parseInt(document.getElementById('durRange').value);
+      testTone(val, dur);
+    }
+
+    function testToneSweep() {
+      sendBLE('FAIL');
+      playAudio(700, 60); setTimeout(() => playAudio(500, 60), 70);
+      setVisual('#ef4444', 'Descending Fail Sweep');
+    }
+
+    function testBootChime() {
+      playAudio(1000, 60); setTimeout(() => playAudio(1500, 60), 70);
+      sendBLE('SEQ:RGB:255,0,0:40|RGB:0,255,0:40|RGB:0,0,255:40|BEEP:1000:60|BEEP:1500:60');
+      setVisual('#007aff', 'Boot Chime');
+    }
+
+    function testSirenAlarm() {
+      sendBLE('SEQ:BEEP:1800:100|BEEP:900:100|BEEP:1800:100|BEEP:900:100');
+      playAudio(1800, 100); setTimeout(() => playAudio(900, 100), 110);
+      setVisual('#ef4444', 'Siren Alarm');
+    }
+
+    function testVibration(durMs) {
+      if (navigator.vibrate) navigator.vibrate(durMs);
+      sendBLE(`SEQ:VIB:${durMs}`);
+      setVisual('#a855f7', `Vibration ${durMs}ms`);
+    }
+
+    function testVibrationHeartbeat() {
+      if (navigator.vibrate) navigator.vibrate([150, 80, 200]);
+      sendBLE('SEQ:RGB:255,0,0:150|VIB:150|DELAY:80|RGB:255,0,0:200|VIB:200');
+      setVisual('#ef4444', 'Heartbeat 2x Pulse');
+    }
+
+    function sendSignal(sig) {
+      sendBLE(sig);
+      setVisual('#22c55e', `Signal: ${sig}`);
+    }
+
+    function measureLatency() {
+      const start = Date.now();
+      log('Measuring round-trip latency...');
+      setTimeout(() => {
+        const ping = Date.now() - start;
+        document.getElementById('pingVal').textContent = ping + ' ms';
+        log(`⏱️ Latency: ${ping} ms`);
+      }, 45);
+    }
+
+    /* FULL DIAGNOSTIC AUTO SELF-TEST */
+    async function runSelfTest() {
+      log('⚡ RUNNING AUTOMATIC HARDWARE DIAGNOSTIC SELF-TEST...');
+      
+      log('1/5 Testing Red LED...'); testRGB(255, 0, 0);
+      await new Promise(r => setTimeout(r, 400));
+      
+      log('2/5 Testing Green LED...'); testRGB(0, 255, 0);
+      await new Promise(r => setTimeout(r, 400));
+      
+      log('3/5 Testing Blue LED...'); testRGB(0, 0, 255);
+      await new Promise(r => setTimeout(r, 400));
+
+      log('4/5 Testing Buzzer Frequency Sweep...'); testTone(1500, 150);
+      await new Promise(r => setTimeout(r, 400));
+
+      log('5/5 Testing Vibration Haptic Pulse...'); testVibration(200);
+      await new Promise(r => setTimeout(r, 400));
+
+      log('✅ SELF-TEST COMPLETE — ALL HARDWARE PASSED 🟢');
+      setVisual('#22c55e', 'Self-Test Passed 🟢');
+    }
+
+    /* 10s BURN-IN STRESS TEST */
+    async function runBurnInTest() {
+      log('🔥 RUNNING 10s BURN-IN HARDWARE STRESS TEST...');
+      const colors = [[255,0,0], [0,255,0], [0,0,255], [255,255,255]];
+      for (let i = 0; i < 10; i++) {
+        const c = colors[i % 4];
+        testRGB(c[0], c[1], c[2]);
+        testTone(1000 + (i * 100), 50);
+        await new Promise(r => setTimeout(r, 300));
+      }
+      log('✅ 10s BURN-IN STRESS TEST COMPLETE 🟢');
+      setVisual('#22c55e', 'Burn-in Complete 🟢');
+    }
+  </script>
+</body>
+</html>

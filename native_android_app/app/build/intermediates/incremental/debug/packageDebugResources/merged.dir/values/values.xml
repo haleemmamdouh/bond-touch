@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0a0a0f</color>
+    <color name="primary">#ff3358</color>
+    <color name="surface">#18181f</color>
+    <string name="app_name">Bond Touch Native</string>
+    <style name="Theme.BondTouch" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="android:statusBarColor">@color/bg</item>
+    </style>
+</resources>

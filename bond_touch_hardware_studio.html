@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bond Touch — Hardware Studio & Code Generator</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #050508;
+      --surface: rgba(22, 22, 30, 0.75);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #ffffff;
+      --text-sub: #8e8e93;
+      --accent: #ff2d55;
+      --cyan: #32ade6;
+      --green: #30d158;
+      --amber: #ff9f0a;
+      --purple: #af52de;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: var(--bg);
+      background-image: radial-gradient(circle at 50% 0%, rgba(255, 45, 85, 0.12) 0%, transparent 70%);
+      color: var(--text);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 16px; }
+
+    .header { text-align: center; margin-bottom: 8px; }
+    .brand-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+    .brand-title { font-size: 28px; font-weight: 700; background: linear-gradient(180deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .card {
+      width: 100%;
+      background: var(--surface);
+      backdrop-filter: blur(30px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+    .setting-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .label-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); }
+    .label-val { font-weight: 700; color: var(--text); }
+
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    select, input[type=color] {
+      width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 10px; color: #fff; font-size: 13px; outline: none;
+    }
+
+    .btn {
+      width: 100%; background: linear-gradient(180deg, #ff3b30 0%, #d70015 100%); color: #fff; border: none; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: transform 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-blue { background: linear-gradient(180deg, #0a84ff 0%, #0056b3 100%); }
+    .btn-outline { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: #fff; }
+
+    pre {
+      background: #000; border: 1px solid var(--border); border-radius: 12px; padding: 14px; font-family: monospace; font-size: 11px; color: #30d158; overflow-x: auto; max-height: 300px; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="brand-tag">HARDWARE CUSTOMIZER & CODE BUILDER</div>
+      <h1 class="brand-title">Bond Touch Studio</h1>
+    </div>
+
+    <!-- CONNECTION CARD -->
+    <div class="card">
+      <div class="card-title">
+        <span>🔌 Hardware Controller</span>
+        <span id="bleStatusTag" style="color:var(--accent)">Disconnected</span>
+      </div>
+      <button class="btn btn-blue" onclick="connectBLE()">🔵 Pair ESP32 via Bluetooth</button>
+    </div>
+
+    <!-- INCOMING TOUCH CUSTOMIZER -->
+    <div class="card">
+      <div class="card-title">🔴 Incoming Touch Behavior</div>
+      
+      <div class="setting-row">
+        <div class="label-line"><span>LED Light Color</span></div>
+        <input type="color" id="inColor" value="#ff0000">
+      </div>
+
+      <div class="setting-row">
+        <div class="label-line"><span>Beep Count (Buzzer)</span><span class="label-val" id="inBeepVal">2 Beeps</span></div>
+        <input type="range" id="inBeepCount" min="1" max="5" value="2" oninput="document.getElementById('inBeepVal').textContent=this.value+' Beeps'">
+      </div>
+
+      <div class="setting-row">
+        <div class="label-line"><span>Delay Between Beeps (ms)</span><span class="label-val" id="inDelayVal">60 ms</span></div>
+        <input type="range" id="inBeepDelay" min="20" max="500" step="10" value="60" oninput="document.getElementById('inDelayVal').textContent=this.value+' ms'">
+      </div>
+
+      <div class="setting-row">
+        <div class="label-line"><span>Buzzer Tone Pitch</span><span class="label-val" id="inPitchVal">1400 Hz</span></div>
+        <input type="range" id="inPitch" min="300" max="3000" step="50" value="1400" oninput="document.getElementById('inPitchVal').textContent=this.value+' Hz'">
+      </div>
+
+      <button class="btn btn-outline" onclick="testIncomingEffect()">⚡ Test Custom Touch on ESP32</button>
+    </div>
+
+    <!-- DISCONNECT STROBE CUSTOMIZER -->
+    <div class="card">
+      <div class="card-title">⚡ Bluetooth Disconnect Strobe</div>
+      
+      <div class="setting-row">
+        <div class="label-line"><span>Strobe Light Color</span></div>
+        <input type="color" id="discColor" value="#0000ff">
+      </div>
+
+      <div class="setting-row">
+        <div class="label-line"><span>Strobe Duration (Seconds)</span><span class="label-val" id="discDurVal">5 Seconds</span></div>
+        <input type="range" id="discDur" min="1" max="10" value="5" oninput="document.getElementById('discDurVal').textContent=this.value+' Seconds'">
+      </div>
+
+      <div class="setting-row">
+        <div class="label-line"><span>Flicker Speed (ms)</span><span class="label-val" id="discSpeedVal">100 ms</span></div>
+        <input type="range" id="discSpeed" min="30" max="300" step="10" value="100" oninput="document.getElementById('discSpeedVal').textContent=this.value+' ms'">
+      </div>
+
+      <button class="btn btn-outline" onclick="testDisconnectEffect()">⚡ Test Custom Strobe on ESP32</button>
+    </div>
+
+    <!-- GENERATED ARDUINO CODE -->
+    <div class="card">
+      <div class="card-title">
+        <span>💻 Generated C++ Arduino Code</span>
+        <button style="background:none; border:none; color:var(--cyan); font-weight:700; cursor:pointer;" onclick="copyCode()">Copy Code</button>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <button class="btn btn-outline" style="flex:1" onclick="generateCode('A')">Generate Unit A Code</button>
+        <button class="btn btn-outline" style="flex:1" onclick="generateCode('B')">Generate Unit B Code</button>
+      </div>
+
+      <pre id="codeOutput">// Click "Generate Unit A Code" or "Generate Unit B Code" above to build your custom C++ code!</pre>
+    </div>
+  </div>
+
+  <script>
+    const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+    const CHAR_RX_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+    let rxChar = null;
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) { alert('Web Bluetooth is supported in Chrome. Please open in Chrome!'); return; }
+      try {
+        const dev = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'BondTouch' }, { services: [SERVICE_UUID] }],
+          optionalServices: [SERVICE_UUID]
+        });
+        const server = await dev.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        rxChar = await service.getCharacteristic(CHAR_RX_UUID);
+        document.getElementById('bleStatusTag').textContent = 'Connected 🟢';
+        document.getElementById('bleStatusTag').style.color = 'var(--green)';
+      } catch(e) { alert('BLE Connect Error: ' + e.message); }
+    }
+
+    async function sendToESP32(str) {
+      if (!rxChar) { alert('Pair ESP32 Bluetooth first!'); return; }
+      const enc = new TextEncoder();
+      await rxChar.writeValue(enc.encode(str));
+    }
+
+    function hexToRgb(hex) {
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+      return {r, g, b};
+    }
+
+    function testIncomingEffect() {
+      const hex = document.getElementById('inColor').value;
+      const rgb = hexToRgb(hex);
+      const beeps = parseInt(document.getElementById('inBeepCount').value);
+      const durationSec = Math.max(1, Math.min(10, Math.ceil((beeps * 150) / 1000)));
+      
+      let bars = [];
+      for (let i = 0; i < 16; i++) {
+        if (i < beeps * 2 && i % 2 === 0) bars.push(255);
+        else bars.push(0);
+      }
+      sendToESP32(`WAVE:${durationSec}:${rgb.r},${rgb.g},${rgb.b}:${bars.join(',')}`);
+    }
+
+    function testDisconnectEffect() {
+      const hex = document.getElementById('discColor').value;
+      const rgb = hexToRgb(hex);
+      const dur = document.getElementById('discDur').value;
+      
+      // 16 alternating strobe bars with custom RGB color
+      const strobeBars = [255,0,255,0,255,0,255,0,255,0,255,0,255,0,255,0].join(',');
+      sendToESP32(`WAVE:${dur}:${rgb.r},${rgb.g},${rgb.b}:${strobeBars}`);
+    }
+
+    function generateCode(unit) {
+      const inHex = document.getElementById('inColor').value;
+      const inRgb = hexToRgb(inHex);
+      const beeps = document.getElementById('inBeepCount').value;
+      const bDelay = document.getElementById('inBeepDelay').value;
+      const pitch = document.getElementById('inPitch').value;
+
+      const discHex = document.getElementById('discColor').value;
+      const discRgb = hexToRgb(discHex);
+      const discDurSec = document.getElementById('discDur').value;
+      const discSpeedMs = document.getElementById('discSpeed').value;
+
+      const code = `/*
+  ====================================================================================
+  BOND TOUCH — CUSTOM HARDWARE CODE (UNIT ${unit})
+  GENERATED VIA BOND TOUCH HARDWARE STUDIO
+  ====================================================================================
+*/
+
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+const int PIN_LED_R = 0, PIN_LED_G = 1, PIN_LED_B = 2;
+const int PIN_BUZZER = 3, PIN_TOUCH = 4, PIN_VIBRATOR = 21, PIN_LED_BUILTIN = 8;
+
+#define DEVICE_BLE_NAME "BondTouch_ESP32_${unit}"
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID_RX "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define CHARACTERISTIC_UUID_TX "a3c87500-8ed3-4bdf-8a39-a01bebede295"
+
+BLEServer* pServer = NULL;
+BLECharacteristic* pTxChar = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+void setRGB(int r, int g, int b) { analogWrite(PIN_LED_R, r); analogWrite(PIN_LED_G, g); analogWrite(PIN_LED_B, b); }
+void setVibrator(bool on) { digitalWrite(PIN_VIBRATOR, on ? HIGH : LOW); }
+
+void makeBuzzerSound(int durationMs, int pitchHz) {
+  int periodUs = 1000000 / (pitchHz * 2);
+  unsigned long start = millis();
+  while ((int)(millis() - start) < durationMs) {
+    digitalWrite(PIN_BUZZER, HIGH); delayMicroseconds(periodUs);
+    digitalWrite(PIN_BUZZER, LOW);  delayMicroseconds(periodUs);
+  }
+  digitalWrite(PIN_BUZZER, LOW);
+}
+
+// ── CUSTOM INCOMING TOUCH EFFECT (${beeps} BEEPS, ${inRgb.r},${inRgb.g},${inRgb.b} COLOR) ──
+void playHeartbeat() {
+  for (int i = 0; i < ${beeps}; i++) {
+    setVibrator(true); setRGB(${inRgb.r}, ${inRgb.g}, ${inRgb.b});
+    makeBuzzerSound(80, ${pitch});
+    setVibrator(false); setRGB(0,0,0);
+    delay(${bDelay});
+  }
+}
+
+// ── CUSTOM DISCONNECT STROBE EFFECT (${discDurSec}s, ${discRgb.r},${discRgb.g},${discRgb.b} COLOR) ──
+void playDisconnectedStrobe() {
+  unsigned long start = millis();
+  while (millis() - start < ${discDurSec * 1000}) {
+    setRGB(${discRgb.r}, ${discRgb.g}, ${discRgb.b}); delay(${discSpeedMs});
+    setRGB(0,0,0); delay(${discSpeedMs});
+  }
+}
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer*) {
+    deviceConnected = true;
+    digitalWrite(PIN_LED_BUILTIN, LOW);
+    if (pTxChar) { pTxChar->setValue("BLE_ON"); pTxChar->notify(); }
+  }
+  void onDisconnect(BLEServer*) {
+    deviceConnected = false;
+    digitalWrite(PIN_LED_BUILTIN, HIGH);
+    playDisconnectedStrobe();
+  }
+};
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_LED_R, OUTPUT); pinMode(PIN_LED_G, OUTPUT); pinMode(PIN_LED_B, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT); pinMode(PIN_VIBRATOR, OUTPUT); pinMode(PIN_TOUCH, INPUT);
+  digitalWrite(PIN_VIBRATOR, LOW); digitalWrite(PIN_BUZZER, LOW); setRGB(0,0,0);
+
+  BLEDevice::init(DEVICE_BLE_NAME);
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+  pTxChar = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY);
+  pTxChar->addDescriptor(new BLE2902());
+  pService->start();
+  BLEDevice::getAdvertising()->start();
+}
+
+void loop() {
+  if (digitalRead(PIN_TOUCH) == HIGH) {
+    playHeartbeat();
+    while (digitalRead(PIN_TOUCH) == HIGH) delay(10);
+    delay(200);
+  }
+  if (!deviceConnected && oldDeviceConnected) { delay(500); pServer->startAdvertising(); }
+  oldDeviceConnected = deviceConnected;
+  delay(10);
+}
+`;
+      document.getElementById('codeOutput').textContent = code;
+    }
+
+    function copyCode() {
+      const code = document.getElementById('codeOutput').textContent;
+      navigator.clipboard.writeText(code);
+      alert('Code copied to clipboard!');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "id": "https://thriving-malasada-6e1f80.netlify.app/",
+  "name": "Bond Touch Mobile",
+  "short_name": "Bond Touch",
+  "description": "Real-time long-distance connection wearable app for touch and custom haptic feedback patterns.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#ff3358",
+  "orientation": "portrait",
+  "categories": [
+    "lifestyle",
+    "utilities",
+    "social"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Bond Touch Dashboard"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Haptic Pattern Generator"
+    }
+  ]
+}

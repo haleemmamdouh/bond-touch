@@ -1,0 +1,12 @@
+R_DEF: Internal format may change without notice
+local
+color bg
+color primary
+color surface
+id btnStart
+id codeInput
+id nameInput
+id statusText
+layout activity_main
+string app_name
+style Theme.BondTouch

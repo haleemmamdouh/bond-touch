@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0a0a0f"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bond Touch Native"
+        android:textColor="#ff3358"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:layout_marginTop="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="24/7 Persistent Kernel BLE Service"
+        android:textColor="#8a8a9a"
+        android:textSize="12sp"
+        android:layout_marginBottom="32dp" />
+
+    <EditText
+        android:id="@+id/nameInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#18181f"
+        android:hint="Your Name (e.g. Ahmed)"
+        android:textColorHint="#4a4a5a"
+        android:textColor="#ffffff"
+        android:padding="16dp"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/codeInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#18181f"
+        android:hint="6-Digit Pair Code (e.g. 102030)"
+        android:textColorHint="#4a4a5a"
+        android:textColor="#ffffff"
+        android:inputType="number"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/btnStart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start 24/7 Foreground Service →"
+        android:backgroundTint="#ff3358"
+        android:textColor="#ffffff"
+        android:padding="14dp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:background="#111118"
+        android:padding="16dp"
+        android:text="Status: Waiting to start..."
+        android:textColor="#22c55e"
+        android:textSize="13sp"
+        android:gravity="center" />
+
+</LinearLayout>

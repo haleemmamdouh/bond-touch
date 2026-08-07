@@ -1,0 +1,491 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bond Touch — Connected Wearable</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0a0f; --surface:#111118; --surface2:#18181f;
+      --border:rgba(255,255,255,0.08); --border-hi:rgba(255,255,255,0.16);
+      --text:#f0f0f5; --text-2:#8a8a9a; --text-3:#4a4a5a;
+      --red:#ff3358; --red-glow:rgba(255,51,88,0.3);
+      --green:#22c55e; --green-glow:rgba(34,197,94,0.25);
+      --blue:#3b82f6; --amber:#f59e0b; --purple:#a855f7;
+      --r:16px; --rs:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+    body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 50% -10%,rgba(255,51,88,.10) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 90% 90%,rgba(59,130,246,.06) 0%,transparent 60%);pointer-events:none;z-index:0}
+    .shell{position:relative;z-index:1;width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px}
+    .header{text-align:center;padding:8px 0 4px}
+    .wordmark{font-size:22px;font-weight:800;letter-spacing:-0.04em;background:linear-gradient(135deg,#ff3358 0%,#ff8c55 60%,#ffb347 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .tagline{font-size:11px;color:var(--text-3);font-weight:500;margin-top:2px;letter-spacing:.1em;text-transform:uppercase}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+    .card-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px}
+    .login-h{font-size:18px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px}
+    .login-s{font-size:13px;color:var(--text-2);margin-bottom:20px;line-height:1.5}
+    .inp{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:13px 14px;color:var(--text);font-size:14px;font-weight:500;outline:none;transition:border-color .2s,box-shadow .2s}
+    .inp:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-glow)}
+    .inp::placeholder{color:var(--text-3)}
+    .gap{height:10px}
+    .btn{width:100%;background:linear-gradient(135deg,#ff3358,#cc1f3a);color:#fff;border:none;border-radius:var(--rs);padding:13px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px var(--red-glow);transition:transform .12s,box-shadow .12s;font-family:inherit}
+    .btn:active{transform:scale(.97);box-shadow:0 2px 8px var(--red-glow)}
+    .btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text-2);box-shadow:none;font-weight:600}
+    .status-row{display:flex;gap:8px}
+    .stat-pill{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px}
+    .stat-dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);transition:background .3s,box-shadow .3s}
+    .stat-dot.on{background:var(--green);box-shadow:0 0 8px var(--green-glow)}
+    .stat-dot.warn{background:var(--red);box-shadow:0 0 8px var(--red-glow)}
+    .stat-dot.blink{background:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.4);animation:blink 1s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .stat-label{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase}
+    .stat-val{font-size:11px;font-weight:700;color:var(--text-2)}
+    .p-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);transition:border-color .4s,background .4s}
+    .p-banner.on{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.05)}
+    .p-banner.off{border-color:rgba(255,51,88,.4);background:rgba(255,51,88,.05)}
+    .p-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--surface);border:1px solid var(--border);flex-shrink:0}
+    .p-name{font-size:13px;font-weight:700}
+    .p-sub{font-size:11px;color:var(--text-2);margin-top:1px}
+    .swatches{display:flex;gap:8px;flex-wrap:wrap}
+    .swatch{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}
+    .swatch:hover{transform:scale(1.1)}
+    .swatch.active{border-color:#fff;transform:scale(1.15);box-shadow:0 0 12px rgba(255,255,255,.5)}
+    .touch-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0}
+    .touch-outer{position:relative;width:148px;height:148px;display:flex;align-items:center;justify-content:center}
+    .ring{position:absolute;border-radius:50%;border:1px solid rgba(255,51,88,.3);animation:ringX 2.5s ease-out infinite;opacity:0;width:100%;height:100%}
+    .ring:nth-child(1){animation-delay:0s}
+    .ring:nth-child(2){animation-delay:.8s}
+    .ring:nth-child(3){animation-delay:1.6s}
+    @keyframes ringX{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.3);opacity:0}}
+    .touch-btn{position:relative;z-index:2;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#2a2035,#0e0e16);border:2px solid rgba(255,255,255,.12);box-shadow:0 0 0 1px rgba(255,51,88,.2),0 16px 40px rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;transition:transform .12s,box-shadow .12s;font-size:32px}
+    .touch-btn:active{transform:scale(.9);box-shadow:0 0 0 1px rgba(255,51,88,.4),0 6px 16px rgba(0,0,0,.6)}
+    .touch-hint{font-size:11px;color:var(--text-3);font-weight:500}
+    .pat-badge{display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:999px;font-size:12px;font-weight:600;color:#93c5fd}
+    .pat-reset{background:none;border:none;color:var(--text-3);font-size:11px;cursor:pointer;text-decoration:underline;font-family:inherit;margin-left:auto}
+    .wave-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    canvas{width:100%;height:76px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);touch-action:none;display:block}
+    .presets{display:flex;gap:6px;margin-top:10px}
+    .btn-p{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-2);padding:7px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+    .btn-p:hover{border-color:var(--border-hi);color:var(--text)}
+    .log{padding:13px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);font-size:13px;color:var(--text-2);font-weight:500;transition:border-color .3s,color .3s,background .3s;text-align:center;min-height:46px;display:flex;align-items:center;justify-content:center}
+    .log.ok{border-color:rgba(59,130,246,.4);color:#93c5fd;background:rgba(59,130,246,.07)}
+    .log.good{border-color:rgba(34,197,94,.4);color:#86efac;background:rgba(34,197,94,.07)}
+    .log.fail{border-color:rgba(255,51,88,.5);color:#fda4af;background:rgba(255,51,88,.1);font-weight:700}
+    .notif-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--rs);font-size:12px;color:#fcd34d;font-weight:600}
+    .notif-bar button{margin-left:auto;background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.4);color:#fcd34d;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+    .reconn-badge{display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:999px;font-size:12px;font-weight:600;color:#fcd34d}
+    .spin{display:inline-block;animation:spinX 1s linear infinite}
+    @keyframes spinX{to{transform:rotate(360deg)}}
+    .incoming-flash{animation:iFlash 1.4s ease-out}
+    @keyframes iFlash{0%{background-color:rgba(255,51,88,.18)}40%{background-color:rgba(255,51,88,.08)}100%{background-color:var(--bg)}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div class="wordmark">Bond Touch</div>
+    <div class="tagline">Wearable Companion</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="card" id="loginCard">
+    <div class="login-h">Connect to Your Partner</div>
+    <div class="login-s">Enter your name and your shared 6-digit pair code to start.</div>
+    <input id="nameInput" class="inp" type="text" placeholder="Your name (e.g. Ahmed)" autocomplete="off">
+    <div class="gap"></div>
+    <input id="codeInput" class="inp" type="number" placeholder="6-digit pair code (e.g. 102030)">
+    <div class="gap" style="height:16px"></div>
+    <button class="btn" onclick="startSession()">Start Session &rarr;</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dash" style="display:none;flex-direction:column;gap:12px;width:100%">
+
+    <div class="notif-bar" id="notifBar" style="display:none">
+      🔔 Allow notifications to be alerted even when the app is closed.
+      <button onclick="askNotif()">Allow</button>
+    </div>
+
+    <div class="status-row">
+      <div class="stat-pill"><div class="stat-dot" id="cloudDot"></div><div class="stat-label">Cloud</div><div class="stat-val" id="cloudTxt">Off</div></div>
+      <div class="stat-pill"><div class="stat-dot" id="bleDot"></div><div class="stat-label">Your ESP</div><div class="stat-val" id="bleTxt">Off</div></div>
+      <div class="stat-pill"><div class="stat-dot" id="partDot"></div><div class="stat-label">Partner ESP</div><div class="stat-val" id="partTxt">Off</div></div>
+    </div>
+
+    <div class="p-banner off" id="pBanner">
+      <div class="p-avatar" id="pAvatar">&#128100;</div>
+      <div><div class="p-name" id="pName">Partner</div><div class="p-sub" id="pSub">🔴 Wearable not connected</div></div>
+    </div>
+
+    <div class="reconn-badge" id="reconnBadge" style="display:none">
+      <span class="spin">&#8635;</span> Auto-reconnecting to ESP32&hellip;
+    </div>
+
+    <div id="bleRow">
+      <button class="btn btn-ghost" onclick="connectBLE()">🔵 Pair ESP32 via Bluetooth</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎨 Light Colour</div>
+      <div class="swatches" id="swatches">
+        <div class="swatch active" style="background:#ff2d55" data-r="255" data-g="45" data-b="85"></div>
+        <div class="swatch" style="background:#ff3b30" data-r="255" data-g="0" data-b="0"></div>
+        <div class="swatch" style="background:#22c55e" data-r="0" data-g="200" data-b="80"></div>
+        <div class="swatch" style="background:#3b82f6" data-r="0" data-g="80" data-b="255"></div>
+        <div class="swatch" style="background:#f59e0b" data-r="255" data-g="160" data-b="0"></div>
+        <div class="swatch" style="background:#a855f7" data-r="168" data-g="85" data-b="247"></div>
+        <div class="swatch" style="background:#ffffff" data-r="255" data-g="255" data-b="255"></div>
+      </div>
+    </div>
+
+    <div class="card" style="align-items:center">
+      <div class="touch-wrap">
+        <div class="touch-outer">
+          <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+          <div class="touch-btn" onclick="sendTap()">&#10084;&#65039;</div>
+        </div>
+        <div class="touch-hint">Tap to send a touch to your partner</div>
+      </div>
+      <div class="pat-badge" id="patBadge">
+        <span id="patLabel">&#9889; Default Heartbeat</span>
+        <button class="pat-reset" onclick="resetPat()">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="wave-hdr">
+        <div class="card-title" style="margin-bottom:0">Pattern Editor</div>
+        <div style="font-size:10px;font-weight:600;color:var(--text-3)">16 steps</div>
+      </div>
+      <canvas id="waveCanvas"></canvas>
+      <div class="presets">
+        <button class="btn-p" onclick="applyPreset('pulse')">Pulse</button>
+        <button class="btn-p" onclick="applyPreset('fade')">Fade</button>
+        <button class="btn-p" onclick="applyPreset('strobe')">Strobe</button>
+        <button class="btn-p" onclick="applyPreset('heartbeat')">Heartbeat</button>
+        <button class="btn-p" onclick="applyPreset('clear')">Clear</button>
+      </div>
+    </div>
+
+    <button class="btn" onclick="saveAndSend()">Save Pattern &amp; Transmit &#9889;</button>
+
+    <div class="log" id="logBox">Pair your ESP32 Bluetooth to begin.</div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────
+const SVC = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+const RX  = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+const TX  = 'a3c87500-8ed3-4bdf-8a39-a01bebede295';
+const BROKER = 'wss://broker.emqx.io:8084/mqtt';
+const ENC = new TextEncoder(), DEC = new TextDecoder();
+
+// ── STATE ──────────────────────────────────────────────────────────
+let myName='', topic='', sTopic='';
+let mqtt_c=null, bleDevice=null, rxChar=null;
+let partnerOnline=false, bleConnected=false;
+let activeR=255,activeG=45,activeB=85;
+let wave=[0,80,180,255,200,120,60,20,80,180,255,180,80,14,0,0];
+let savedWave=null, savedName='Default Heartbeat';
+let lastTap=0;
+let autoReconn=false, reconnHandle=null, reconnAttempts=0;
+const MAX_RECONN=40;
+let canvas, ctx;
+
+// ── SERVICE WORKER ─────────────────────────────────────────────────
+function regSW() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type==='MQTT_MSG') {
+      try { handlePayload(e.data.topic, JSON.parse(e.data.payload)); } catch(_){}
+    }
+  });
+}
+function initSW() {
+  navigator.serviceWorker.ready.then(reg => {
+    if (reg.active) reg.active.postMessage({ type:'INIT', topic, statusTopic:sTopic, name:myName });
+  });
+}
+function askNotif() {
+  Notification.requestPermission().then(p => {
+    document.getElementById('notifBar').style.display = 'none';
+    if (p==='granted') initSW();
+  });
+}
+function checkNotifBanner() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission==='default') document.getElementById('notifBar').style.display='flex';
+  if (Notification.permission==='granted') initSW();
+}
+
+// ── SESSION ────────────────────────────────────────────────────────
+function startSession() {
+  myName = (document.getElementById('nameInput').value||'').trim();
+  const code = (document.getElementById('codeInput').value||'').trim();
+  if (!myName || code.length < 4) { alert('Enter your name and a valid pair code.'); return; }
+  topic  = 'bondtouch/pair_' + code;
+  sTopic = 'bondtouch/status_' + code;
+  document.getElementById('loginCard').style.display='none';
+  document.getElementById('dash').style.display='flex';
+  loadPat(); initCanvas(); initMQTT(); checkNotifBanner(); regSW();
+}
+
+// ── MQTT ───────────────────────────────────────────────────────────
+function initMQTT() {
+  mqtt_c = mqtt.connect(BROKER, {
+    clientId:'bt_'+Math.random().toString(16).slice(2,10),
+    keepalive:60, reconnectPeriod:3000
+  });
+  mqtt_c.on('connect', () => {
+    setDot('cloudDot','on'); setTxt('cloudTxt','Live');
+    mqtt_c.subscribe([topic, sTopic], () => {
+      setTimeout(()=>{ if(mqtt_c.connected) mqtt_c.publish(topic, JSON.stringify({type:'request_status',sender:myName})); }, 400);
+    });
+    setLog('☁️ Cloud connected. Pair ESP32 Bluetooth.','');
+    if (Notification.permission==='granted') initSW();
+  });
+  mqtt_c.on('offline', ()=>{ setDot('cloudDot','warn'); setTxt('cloudTxt','Offline'); });
+  mqtt_c.on('error', ()=>{});
+  mqtt_c.on('message', (t,buf)=>{ try { handlePayload(t, JSON.parse(buf.toString())); } catch(_){} });
+}
+
+function handlePayload(t, p) {
+  if (!p || !p.sender) return;
+  const fromMe = p.sender.toLowerCase()===myName.toLowerCase();
+  if (p.type==='request_status' && !fromMe) {
+    if (bleConnected && mqtt_c && mqtt_c.connected)
+      mqtt_c.publish(sTopic, JSON.stringify({type:'ble_connect',sender:myName}), {retain:true});
+    return;
+  }
+  if (fromMe) return;
+  if (t===sTopic || p.type==='ble_connect') { updatePartner(true, p.sender); sendESP('PARTNER_BLE_ON'); return; }
+  if (p.type==='ble_disconnect') { updatePartner(false, p.sender); return; }
+  if (p.type==='waveform') { recvWave(p.sender, p.data, p.color); return; }
+  recvTouch(p.sender);
+}
+
+function broadBLE(on) {
+  if (!mqtt_c || !mqtt_c.connected) return;
+  mqtt_c.publish(sTopic, JSON.stringify({type: on?'ble_connect':'ble_disconnect', sender:myName}), {retain:true});
+}
+
+// ── BLE ────────────────────────────────────────────────────────────
+async function connectBLE() {
+  if (!navigator.bluetooth) { alert('Open in Chrome on Android or Desktop for Web Bluetooth.'); return; }
+  clearReconn();
+  try {
+    setLog('🔵 Scanning for BondTouch ESP32…','');
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'BondTouch'},{services:[SVC]}], optionalServices:[SVC]
+    });
+    bleDevice.addEventListener('gattserverdisconnected', onBLEDisc);
+    await doConnect();
+  } catch(e) {
+    if (e.name!=='NotFoundError') setLog('⚠️ ' + e.message,'fail');
+  }
+}
+
+async function doConnect() {
+  if (!bleDevice) return;
+  const server  = await bleDevice.gatt.connect();
+  const service = await server.getPrimaryService(SVC);
+  rxChar        = await service.getCharacteristic(RX);
+  const txC     = await service.getCharacteristic(TX);
+  await txC.startNotifications();
+  txC.addEventListener('characteristicvaluechanged', onESPMsg);
+  bleConnected=true; autoReconn=false; reconnAttempts=0; clearReconn();
+  setDot('bleDot','on'); setTxt('bleTxt','On');
+  document.getElementById('bleRow').style.display='none';
+  document.getElementById('reconnBadge').style.display='none';
+  setLog('🔵 ESP32 connected via Bluetooth!','ok');
+  if (navigator.vibrate) navigator.vibrate(200);
+  broadBLE(true);
+}
+
+function onBLEDisc() {
+  bleConnected=false; rxChar=null;
+  setDot('bleDot','warn'); setTxt('bleTxt','Off');
+  broadBLE(false);
+  setLog('🟡 ESP32 out of range — auto-reconnecting…','fail');
+  schedReconn();
+}
+
+function schedReconn() {
+  if (autoReconn) return;
+  autoReconn=true; reconnAttempts=0;
+  document.getElementById('reconnBadge').style.display='flex';
+  document.getElementById('bleRow').style.display='none';
+  tryReconn();
+}
+
+async function tryReconn() {
+  if (!autoReconn || !bleDevice) { stopReconn(); return; }
+  if (reconnAttempts>=MAX_RECONN) {
+    stopReconn();
+    setDot('bleDot',''); setTxt('bleTxt','Off');
+    document.getElementById('reconnBadge').style.display='none';
+    document.getElementById('bleRow').style.display='block';
+    setLog('⚠️ Auto-reconnect stopped. Tap "Pair" to retry.','fail');
+    return;
+  }
+  reconnAttempts++;
+  try { await doConnect(); }
+  catch(_) {
+    const wait = Math.min(2000 + reconnAttempts*500, 8000);
+    reconnHandle = setTimeout(tryReconn, wait);
+  }
+}
+function clearReconn() {
+  autoReconn=false;
+  if (reconnHandle) { clearTimeout(reconnHandle); reconnHandle=null; }
+  document.getElementById('reconnBadge').style.display='none';
+}
+function stopReconn() { autoReconn=false; if (reconnHandle) { clearTimeout(reconnHandle); reconnHandle=null; } }
+
+function onESPMsg(e) {
+  try { const s=DEC.decode(e.target.value); if(s.includes('BLE_ON')) { broadBLE(true); return; } } catch(_){}
+  if (navigator.vibrate) navigator.vibrate(60);
+  sendTap();
+}
+
+async function sendESP(str) {
+  if (!rxChar) return;
+  try {
+    const d = ENC.encode(str.slice(0,512));
+    if (rxChar.writeValueWithResponse) await rxChar.writeValueWithResponse(d);
+    else await rxChar.writeValue(d);
+  } catch(_) {}
+}
+
+// ── TOUCH SEND ─────────────────────────────────────────────────────
+function sendTap() {
+  if (!mqtt_c) return;
+  const now=Date.now(); if (now-lastTap<800) return; lastTap=now;
+  if (!partnerOnline) { failSend(); return; }
+  if (navigator.vibrate) navigator.vibrate(50);
+  if (savedWave) {
+    mqtt_c.publish(topic, JSON.stringify({type:'waveform',data:savedWave.join(','),color:`${activeR},${activeG},${activeB}`,duration:3,sender:myName,ts:now}));
+    setLog('⚡ Sent "' + savedName + '" to partner!','ok');
+  } else {
+    mqtt_c.publish(topic, JSON.stringify({sender:myName,ts:now}));
+    setLog('⚡ Touch sent to partner!','ok');
+  }
+}
+
+function saveAndSend() {
+  if (!mqtt_c) return;
+  if (navigator.vibrate) navigator.vibrate(80);
+  savedWave=[...wave]; savedName='Custom Pattern';
+  localStorage.setItem('bt_saved', JSON.stringify({wave:savedWave,name:savedName}));
+  document.getElementById('patLabel').textContent='⚡ '+savedName;
+  if (!partnerOnline) { failSend(); return; }
+  mqtt_c.publish(topic, JSON.stringify({type:'waveform',data:savedWave.join(','),color:`${activeR},${activeG},${activeB}`,duration:3,sender:myName,ts:Date.now()}));
+  setLog('⚡ Pattern saved & sent to partner!','ok');
+}
+
+function failSend() {
+  if (navigator.vibrate) navigator.vibrate([200,100,200]);
+  setLog('❌ DELIVERY FAILED — partner wearable not connected!','fail');
+  sendESP('FAIL');
+}
+
+// ── RECEIVE ────────────────────────────────────────────────────────
+function recvTouch(s) {
+  flashBody(); if(navigator.vibrate) navigator.vibrate([100,50,200,50,100]);
+  setLog('❤️ Touch from '+s+'!','good'); sendESP('TOUCH');
+}
+function recvWave(s,data,col) {
+  flashBody(); if(navigator.vibrate) navigator.vibrate([80,40,160,40,80]);
+  setLog('🎨 Pattern from '+s+'!','good');
+  sendESP('WAVE:3:'+(col||'255,0,0')+':'+data);
+}
+
+// ── PARTNER UI ─────────────────────────────────────────────────────
+function updatePartner(on, name) {
+  partnerOnline=on;
+  const b=document.getElementById('pBanner');
+  document.getElementById('pName').textContent = name||'Partner';
+  document.getElementById('pAvatar').textContent = on&&name ? name[0].toUpperCase() : '👤';
+  document.getElementById('pSub').textContent = on?'🟢 Wearable connected':'🔴 Wearable not connected';
+  document.getElementById('pSub').style.color = on?'var(--green)':'';
+  b.className = 'p-banner '+(on?'on':'off');
+  setDot('partDot', on?'on':'warn'); setTxt('partTxt', on?'On':'Off');
+}
+
+// ── COLOUR PICKER ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('swatches').addEventListener('click', e=>{
+    const sw=e.target.closest('.swatch'); if(!sw) return;
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+    sw.classList.add('active');
+    activeR=+sw.dataset.r; activeG=+sw.dataset.g; activeB=+sw.dataset.b;
+    drawCanvas();
+  });
+});
+
+// ── CANVAS ─────────────────────────────────────────────────────────
+function initCanvas() {
+  canvas=document.getElementById('waveCanvas');
+  canvas.width=canvas.offsetWidth||380; canvas.height=76;
+  ctx=canvas.getContext('2d'); drawCanvas();
+  canvas.addEventListener('pointerdown',doDraw,{passive:true});
+  canvas.addEventListener('pointermove',e=>{if(e.buttons&1)doDraw(e);},{passive:true});
+}
+function doDraw(e) {
+  const r=canvas.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  const i=Math.min(15,Math.max(0,Math.floor((x/canvas.width)*16)));
+  wave[i]=Math.min(255,Math.max(0,Math.floor((1-y/canvas.height)*255)));
+  drawCanvas();
+}
+function drawCanvas() {
+  if(!ctx) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const bw=canvas.width/16;
+  for(let i=0;i<16;i++){
+    const h=(wave[i]/255)*canvas.height;
+    const a=0.35+(wave[i]/255)*0.65;
+    ctx.fillStyle='rgba('+activeR+','+activeG+','+activeB+','+a+')';
+    ctx.beginPath(); ctx.roundRect(i*bw+2,canvas.height-h,bw-4,h,3); ctx.fill();
+  }
+}
+function applyPreset(t) {
+  const P={
+    pulse:[0,60,160,255,120,30,0,100,255,180,40,0,0,0,0,0],
+    fade:[10,40,100,170,220,255,220,170,100,40,10,0,0,0,0,0],
+    strobe:[255,0,255,0,255,0,255,0,255,0,255,0,255,0,255,0],
+    heartbeat:[0,80,180,255,200,120,60,20,80,180,255,180,80,14,0,0],
+    clear:new Array(16).fill(0)
+  };
+  wave=[...(P[t]||P.clear)];
+  if(t!=='clear'){
+    savedWave=[...wave]; savedName=t[0].toUpperCase()+t.slice(1);
+    localStorage.setItem('bt_saved',JSON.stringify({wave:savedWave,name:savedName}));
+    document.getElementById('patLabel').textContent='⚡ '+savedName;
+  }
+  drawCanvas();
+}
+
+// ── SAVED PATTERN ──────────────────────────────────────────────────
+function loadPat(){try{const s=localStorage.getItem('bt_saved');if(s){const p=JSON.parse(s);savedWave=p.wave;savedName=p.name||'Custom';document.getElementById('patLabel').textContent='⚡ '+savedName;}}catch(_){}}
+function resetPat(){localStorage.removeItem('bt_saved');savedWave=null;savedName='Default Heartbeat';document.getElementById('patLabel').textContent='⚡ Default Heartbeat';setLog('🔄 Reset to Default Heartbeat','ok');}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────
+function setDot(id,s){const e=document.getElementById(id);if(e)e.className='stat-dot'+(s?' '+s:'');}
+function setTxt(id,t){const e=document.getElementById(id);if(e)e.textContent=t;}
+function setLog(m,t){const e=document.getElementById('logBox');if(!e)return;e.textContent=m;e.className='log'+(t?' '+t:'');}
+function flashBody(){document.body.classList.remove('incoming-flash');void document.body.offsetWidth;document.body.classList.add('incoming-flash');}
+window.addEventListener('resize',()=>{if(!canvas)return;canvas.width=canvas.offsetWidth||380;drawCanvas();});
+</script>
+</body>
+</html>

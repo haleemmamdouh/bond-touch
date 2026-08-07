@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bond Touch Live Prototype</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0b0b0e;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: background-color 0.2s ease;
+      overflow: hidden;
+    }
+
+    /* Full screen flash when touch is received */
+    body.touch-received {
+      animation: flashBg 1s ease;
+    }
+
+    @keyframes flashBg {
+      0% { background-color: #ff0055; }
+      30% { background-color: #b0003a; }
+      100% { background-color: #0b0b0e; }
+    }
+
+    .card {
+      background: #141419;
+      border: 1px solid #262633;
+      border-radius: 28px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      color: #8a8a9e;
+      font-size: 13px;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #09090c;
+      border: 1.5px solid #262633;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #ff416c;
+    }
+
+    button.btn-connect {
+      width: 100%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 8px 25px rgba(255, 65, 108, 0.35);
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button.btn-connect:active {
+      transform: scale(0.96);
+    }
+
+    /* MAIN CONNECTED INTERFACE */
+    #connectedView {
+      display: none;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(72, 187, 120, 0.1);
+      border: 1px solid rgba(72, 187, 120, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      color: #48bb78;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #48bb78;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #48bb78;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .room-info {
+      font-size: 13px;
+      color: #8a8a9e;
+      margin-bottom: 30px;
+    }
+
+    .room-info span {
+      color: #ff416c;
+      font-weight: 600;
+    }
+
+    /* THE VIRTUAL BRACELET TOUCH PAD */
+    .touch-pad-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      margin: 0 auto 24px;
+    }
+
+    .touch-pad {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff416c, #8a0028);
+      border: 4px solid #ff416c;
+      box-shadow: 0 0 40px rgba(255, 65, 108, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .touch-pad:active {
+      transform: scale(0.9);
+      box-shadow: 0 0 15px rgba(255, 65, 108, 0.2);
+    }
+
+    .haptic-ring {
+      position: absolute;
+      top: -10px; left: -10px; right: -10px; bottom: -10px;
+      border-radius: 50%;
+      border: 2px dashed rgba(255, 65, 108, 0.5);
+      animation: rotateRing 10s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes rotateRing {
+      100% { transform: rotate(360deg); }
+    }
+
+    .log-box {
+      background: #09090c;
+      border: 1px solid #262633;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 13px;
+      color: #8a8a9e;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    .log-box.received {
+      border-color: #ff416c;
+      color: #ff416c;
+      background: rgba(255, 65, 108, 0.08);
+      font-weight: 600;
+    }
+
+    .log-box.sent {
+      border-color: #48bb78;
+      color: #48bb78;
+      background: rgba(72, 187, 120, 0.08);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CONNECT CARD -->
+  <div class="card" id="connectView">
+    <h1>⚡ Bond Touch</h1>
+    <p class="subtitle">Real-time instant bracelet prototype.<br>Use the <strong>same Room Code</strong> on both phones!</p>
+    
+    <input type="text" id="nameInput" class="input-field" placeholder="Your Name (e.g. Ahmed)" />
+    <input type="text" id="roomInput" class="input-field" placeholder="Shared Room Code (e.g. 777)" />
+    
+    <button class="btn-connect" onclick="connect()">Connect Bracelet ❤️</button>
+  </div>
+
+  <!-- CONNECTED BRACELET CARD -->
+  <div class="card" id="connectedView">
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span id="userNameTag">CONNECTED</span>
+    </div>
+
+    <div class="room-info">Room: <span id="roomTag">---</span></div>
+
+    <div class="touch-pad-container">
+      <div class="haptic-ring"></div>
+      <div class="touch-pad" id="touchBtn" onclick="sendTouch()">❤️</div>
+    </div>
+
+    <p style="font-size: 12px; color: #666; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;">TAP CIRCLE TO SEND VIBRATION</p>
+
+    <div class="log-box" id="logBox">Ready for touches...</div>
+  </div>
+
+<script>
+  let myName = "";
+  let roomCode = "";
+  let eventSource = null;
+
+  function connect() {
+    myName = document.getElementById('nameInput').value.trim();
+    roomCode = document.getElementById('roomInput').value.trim().toLowerCase();
+
+    if (!myName || !roomCode) {
+      alert("Please enter your name and a room code!");
+      return;
+    }
+
+    document.getElementById('connectView').style.display = 'none';
+    document.getElementById('connectedView').style.display = 'block';
+    document.getElementById('userNameTag').textContent = "ONLINE: " + myName.toUpperCase();
+    document.getElementById('roomTag').textContent = roomCode.toUpperCase();
+
+    // Connect to real-time instant SSE stream on ntfy
+    const channelUrl = `https://ntfy.sh/bondtouch_room_${roomCode}/sse`;
+    eventSource = new EventSource(channelUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === 'message' && data.message) {
+          const payload = JSON.parse(data.message);
+          
+          // If the message is from partner (not me), trigger touch!
+          if (payload.sender && payload.sender.toLowerCase() !== myName.toLowerCase()) {
+            onReceiveTouch(payload.sender);
+          }
+        }
+      } catch (err) {
+        // Ignore parse errors
+      }
+    };
+  }
+
+  async function sendTouch() {
+    // Animate button
+    const btn = document.getElementById('touchBtn');
+    btn.style.transform = 'scale(0.85)';
+    setTimeout(() => btn.style.transform = '', 120);
+
+    // Haptic vibration on own phone when tapping
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    // Log update
+    const log = document.getElementById('logBox');
+    log.textContent = "⚡ Touch Sent!";
+    log.className = "log-box sent";
+
+    // Send instant HTTP POST
+    try {
+      await fetch(`https://ntfy.sh/bondtouch_room_${roomCode}`, {
+        method: 'POST',
+        body: JSON.stringify({ sender: myName, time: Date.now() })
+      });
+    } catch (e) {
+      log.textContent = "❌ Network Error";
+    }
+  }
+
+  function onReceiveTouch(sender) {
+    // 1. Flash screen pink
+    document.body.classList.remove('touch-received');
+    void document.body.offsetWidth; // trigger reflow
+    document.body.classList.add('touch-received');
+
+    // 2. Vibrate phone (3 quick pulses like Bond Touch haptics!)
+    if (navigator.vibrate) {
+      navigator.vibrate([150, 70, 150, 70, 300]);
+    }
+
+    // 3. Audio feedback if enabled
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+
+    // 4. Update Log Box
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const log = document.getElementById('logBox');
+    log.textContent = `❤️ Touch received from ${sender} at ${timeStr}!`;
+    log.className = "log-box received";
+  }
+</script>
+
+</body>
+</html>

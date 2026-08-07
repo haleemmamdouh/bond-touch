@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bond Touch — ESP32 Wireless Studio</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0b0b0e;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body.flash-received {
+      animation: flashBg 1s ease;
+    }
+
+    @keyframes flashBg {
+      0%   { background-color: #3d0033; }
+      40%  { background-color: #1a0014; }
+      100% { background-color: #0b0b0e; }
+    }
+
+    .card {
+      background: #141419;
+      border: 1px solid #262633;
+      border-radius: 28px;
+      padding: 26px 18px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    p.subtitle {
+      color: #8a8a9e;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .input-field {
+      width: 100%;
+      background: #09090c;
+      border: 1.5px solid #262633;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .btn-connect {
+      width: 100%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .btn-connect:active { transform: scale(0.97); }
+
+    #connectedView { display: none; }
+
+    /* STATUS BADGES */
+    .status-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(72,187,120,0.1);
+      border: 1px solid rgba(72,187,120,0.3);
+      padding: 6px 12px;
+      border-radius: 20px;
+      color: #48bb78;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-badge.dev-off {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      background: currentColor;
+      border-radius: 50%;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .btn-ble-main {
+      width: 100%;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1.5px solid rgba(59, 130, 246, 0.5);
+      color: #60a5fa;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-ble-main:hover, .btn-ble-main:active {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: #60a5fa;
+    }
+
+    /* HEART BUTTON */
+    .heart-wrap {
+      width: 90px; height: 90px;
+      margin: 0 auto 18px;
+    }
+
+    .touch-pad {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff416c, #7a0024);
+      border: 3px solid #ff416c;
+      box-shadow: 0 0 28px rgba(255,65,108,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: transform 0.1s;
+    }
+
+    .touch-pad:active { transform: scale(0.86); }
+
+    /* CONTROLS GRID: DURATION + RGB COLOR */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .control-box {
+      background: #09090c;
+      border: 1px solid #262633;
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .control-label {
+      font-size: 11px;
+      color: #8a8a9e;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .color-swatches {
+      display: flex;
+      gap: 6px;
+      justify-content: space-between;
+    }
+
+    .swatch {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.15s;
+    }
+
+    .swatch.selected {
+      border-color: #ffffff;
+      transform: scale(1.15);
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      background: #262633;
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      box-shadow: 0 0 8px rgba(255,65,108,0.6);
+      cursor: pointer;
+    }
+
+    /* GRAPH SECTION */
+    .graph-section {
+      margin-bottom: 14px;
+    }
+
+    .graph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .graph-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #ff416c;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      height: 120px;
+      position: relative;
+    }
+
+    canvas.wave-canvas {
+      width: 100%;
+      height: 100%;
+      background: #09090c;
+      border: 1px solid rgba(255,65,108,0.3);
+      border-radius: 14px;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    /* PRESETS */
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-preset {
+      background: #09090c;
+      border: 1px solid #262633;
+      color: #aaa;
+      padding: 9px 2px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .btn-preset:active { background: #ff416c; color: #fff; border-color: #ff416c; }
+
+    /* TRANSMIT */
+    .btn-transmit {
+      width: 100%;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      border: none;
+      color: #fff;
+      padding: 15px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 24px rgba(255,65,108,0.3);
+    }
+
+    .btn-transmit:active { transform: scale(0.96); }
+
+    /* INCOMING PREVIEW */
+    .incoming-wrap {
+      display: none;
+      margin-bottom: 12px;
+    }
+
+    .incoming-wrap.visible { display: block; }
+
+    .incoming-header {
+      font-size: 11px;
+      color: #8a8a9e;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    canvas.incoming-canvas {
+      width: 100%;
+      height: 40px;
+      background: #09090c;
+      border: 1px solid rgba(192,132,252,0.3);
+      border-radius: 10px;
+    }
+
+    /* LOG */
+    .log-box {
+      background: #09090c;
+      border: 1px solid #262633;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #8a8a9e;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .log-box.received { border-color: #ff416c; color: #ff416c; background: rgba(255,65,108,0.07); font-weight: 600; }
+    .log-box.sent     { border-color: #48bb78; color: #48bb78; background: rgba(72,187,120,0.07); }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div class="card" id="connectView">
+    <h1>❤️ Bond Touch ESP32</h1>
+    <p class="subtitle">Wireless BLE Studio for ESP32 Dev Boards.<br>Connect via Bluetooth!</p>
+    <input type="text" id="nameInput" class="input-field" placeholder="Your Name (e.g. Ahmed)" />
+    <input type="text" id="roomInput" class="input-field" placeholder="6-Digit Pair Code (e.g. 102030)" />
+    <button class="btn-connect" onclick="connect()">Connect Studio ❤️</button>
+  </div>
+
+  <!-- CONNECTED -->
+  <div class="card" id="connectedView">
+
+    <div class="status-row">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="mqttStatusTag">CLOUD: ONLINE</span>
+      </div>
+      <div class="status-badge dev-off" id="hwBadge">
+        <div class="status-dot"></div>
+        <span id="hwStatusTag">ESP32 BLE: DISCONNECTED</span>
+      </div>
+    </div>
+
+    <!-- BLUETOOTH PAIR BUTTON -->
+    <button class="btn-ble-main" id="btnBleMain" onclick="connectBLE()">
+      <span>🔵 Pair ESP32 Bluetooth</span>
+    </button>
+
+    <!-- HEART TAP -->
+    <div class="heart-wrap">
+      <div class="touch-pad" id="mainHeartPad">❤️</div>
+    </div>
+
+    <!-- CONTROLS GRID: DURATION + RGB COLOR -->
+    <div class="controls-grid">
+      <div class="control-box">
+        <div class="control-label">
+          <span>⏱ Duration</span>
+          <span id="durationVal" style="color:#ff416c; font-family:monospace">3s</span>
+        </div>
+        <input type="range" id="durationSlider" min="1" max="10" value="3" step="1" oninput="updateDuration(this.value)">
+      </div>
+
+      <div class="control-box">
+        <div class="control-label">
+          <span>🎨 Color Mode</span>
+        </div>
+        <div class="color-swatches">
+          <div class="swatch selected" style="background:#ff416c;" onclick="selectColor(255,0,this)" title="Red"></div>
+          <div class="swatch" style="background:#38b000;" onclick="selectColor(0,255,this)" title="Green"></div>
+          <div class="swatch" style="background:#ffb703;" onclick="selectColor(255,255,this)" title="Yellow"></div>
+          <div class="swatch" style="background:#ff0055;" onclick="selectColor(255,60,this)" title="Pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAPH SECTION -->
+    <div class="graph-section">
+      <div class="graph-header">
+        <span class="graph-title">🎨 DRAW WAVEFORM</span>
+        <span style="font-size:10px; color:#666; font-family:monospace">16 BARS</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="waveCanvas" class="wave-canvas"></canvas>
+      </div>
+      <div class="preset-row">
+        <button class="btn-preset" id="p1">🫀 Pulse</button>
+        <button class="btn-preset" id="p2">🌅 Fade</button>
+        <button class="btn-preset" id="p3">⚡ Strobe</button>
+        <button class="btn-preset" id="p4">❌ Clear</button>
+      </div>
+    </div>
+
+    <!-- TRANSMIT -->
+    <button class="btn-transmit" id="btnTransmit">Transmit to Partner ⚡</button>
+
+    <!-- INCOMING PREVIEW -->
+    <div class="incoming-wrap" id="incomingWrap">
+      <div class="incoming-header">📥 INCOMING FROM PARTNER</div>
+      <canvas id="inCanvas" class="incoming-canvas"></canvas>
+    </div>
+
+    <div class="log-box" id="logBox">Click 'Pair ESP32 Bluetooth' to connect!</div>
+  </div>
+
+<script>
+  let myName = "", topicName = "", mqttClient = null;
+  let durationSec = 3;
+  let selectedR = 255, selectedG = 0;
+
+  let bleDevice = null;
+  let rxCharacteristic = null;
+
+  const SERVICE_UUID           = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+  const CHARACTERISTIC_UUID_RX = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+  const CHARACTERISTIC_UUID_TX = "a3c87500-8ed3-4bdf-8a39-a01bebede295";
+
+  let myWave = [0, 60, 160, 255, 200, 120, 60, 20, 80, 180, 255, 180, 80, 20, 0, 0];
+  let pWave = [];
+
+  let canvas, ctx, inCanvas, inCtx;
+  let isDrawing = false;
+
+  function updateDuration(v) {
+    durationSec = parseInt(v);
+    document.getElementById('durationVal').textContent = durationSec + 's';
+  }
+
+  function selectColor(r, g, el) {
+    selectedR = r; selectedG = g;
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    drawWave();
+  }
+
+  function connect() {
+    myName = document.getElementById('nameInput').value.trim();
+    const code = document.getElementById('roomInput').value.trim();
+    if (!myName || !code) { alert("Enter name and code!"); return; }
+    topicName = "bondtouch/pair_" + code;
+
+    document.getElementById('connectView').style.display = 'none';
+    document.getElementById('connectedView').style.display = 'block';
+
+    setTimeout(initUI, 120);
+
+    mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      clientId: 'bt_esp32_' + Math.random().toString(16).substr(2, 8)
+    });
+
+    mqttClient.on('connect', () => {
+      setLog("⚡ Cloud Connected! Tap 'Pair ESP32 Bluetooth' next.", "");
+      mqttClient.subscribe(topicName);
+    });
+
+    mqttClient.on('message', (topic, msg) => {
+      try {
+        const p = JSON.parse(msg.toString());
+        if (!p.sender || p.sender.toLowerCase() === myName.toLowerCase()) return;
+
+        if (p.type === 'waveform') {
+          onPartnerWaveform(p.sender, p.data, p.color, p.duration || 1);
+        } else {
+          onPartnerTouch(p.sender);
+        }
+      } catch(e) {}
+    });
+  }
+
+  // WEB BLUETOOTH PAIRING FUNCTION
+  async function connectBLE() {
+    if (!navigator.bluetooth) {
+      alert("Web Bluetooth is supported in Chrome (Android, Windows, Mac). Please open this page in Chrome!");
+      return;
+    }
+
+    try {
+      setLog("🔵 Scanning for BondTouch_ESP32...", "");
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [
+          { namePrefix: 'BondTouch' },
+          { name: 'BondTouch_ESP32' },
+          { services: [SERVICE_UUID] }
+        ],
+        optionalServices: [SERVICE_UUID]
+      });
+
+      bleDevice.addEventListener('gattserverdisconnected', () => updateHwStatus(false));
+
+      setLog("🔵 Connecting to " + (bleDevice.name || "ESP32") + "...", "");
+      const server = await bleDevice.gatt.connect();
+
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+
+      // Listen for physical touch button notifications from local ESP32!
+      const txChar = await service.getCharacteristic(CHARACTERISTIC_UUID_TX);
+      await txChar.startNotifications();
+      txChar.addEventListener('characteristicvaluechanged', () => {
+        if (navigator.vibrate) navigator.vibrate(50);
+        setLog("👉 Physical Touch on your ESP32! Sent to partner...", "sent");
+        sendHeartTap();
+      });
+
+      updateHwStatus(true);
+      setLog("🟢 ESP32 Bluetooth Connected!", "sent");
+
+    } catch (error) {
+      setLog("⚠️ BLE Pairing: " + error.message, "");
+    }
+  }
+
+  function updateHwStatus(connected) {
+    const badge = document.getElementById('hwBadge');
+    const tag = document.getElementById('hwStatusTag');
+    const btn = document.getElementById('btnBleMain');
+
+    if (connected) {
+      badge.classList.remove('dev-off');
+      tag.textContent = "ESP32 BLE: CONNECTED";
+      btn.style.display = "none";
+    } else {
+      badge.classList.add('dev-off');
+      tag.textContent = "ESP32 BLE: DISCONNECTED";
+      btn.style.display = "flex";
+    }
+  }
+
+  // SEND DATA OVER BLE TO ESP32
+  async function sendToESP32(payloadStr) {
+    if (!rxCharacteristic) {
+      console.warn("⚠️ sendToESP32: rxCharacteristic is null! Is Laptop connected to ESP1 over Bluetooth?");
+      return;
+    }
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(payloadStr);
+      if (rxCharacteristic.writeValueWithResponse) {
+        await rxCharacteristic.writeValueWithResponse(data);
+      } else if (rxCharacteristic.writeValueWithoutResponse) {
+        await rxCharacteristic.writeValueWithoutResponse(data);
+      } else {
+        await rxCharacteristic.writeValue(data);
+      }
+      console.log("✅ Laptop sent to ESP1 via BLE:", payloadStr);
+    } catch(e) {
+      console.error("❌ Laptop Web BLE write error:", e);
+    }
+  }
+
+  function initUI() {
+    canvas = document.getElementById('waveCanvas');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    ctx = canvas.getContext('2d');
+
+    inCanvas = document.getElementById('inCanvas');
+    inCanvas.width = inCanvas.offsetWidth;
+    inCanvas.height = inCanvas.offsetHeight;
+    inCtx = inCanvas.getContext('2d');
+
+    drawWave();
+
+    addDrawListeners(canvas, myWave, drawWave);
+
+    document.getElementById('mainHeartPad').addEventListener('click', sendHeartTap);
+    document.getElementById('btnTransmit').addEventListener('click', sendWaveforms);
+
+    document.getElementById('p1').addEventListener('click', () => { myWave = [0,60,160,255,120,30,0,100,255,180,40,0,0,0,0,0]; drawWave(); });
+    document.getElementById('p2').addEventListener('click', () => { myWave = [10,40,100,170,220,255,220,170,100,40,10,0,0,0,0,0]; drawWave(); });
+    document.getElementById('p3').addEventListener('click', () => { myWave = [255,0,255,0,255,0,255,0,255,0,255,0,255,0,255,0]; drawWave(); });
+    document.getElementById('p4').addEventListener('click', () => { myWave = new Array(16).fill(0); drawWave(); });
+  }
+
+  function addDrawListeners(canvas, waveArray, redraw) {
+    let rafPending = false;
+    const getPoint = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const idx = Math.floor((x / canvas.width) * 16);
+      if (idx >= 0 && idx < 16) {
+        waveArray[idx] = Math.floor(Math.max(0, Math.min(255, ((canvas.height - y) / canvas.height) * 255)));
+        if (!rafPending) {
+          rafPending = true;
+          requestAnimationFrame(() => { redraw(); rafPending = false; });
+        }
+      }
+    };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      isDrawing = true;
+      getPoint(e);
+    });
+    canvas.addEventListener('pointermove', (e) => { if (isDrawing) getPoint(e); });
+    canvas.addEventListener('pointerup', () => { isDrawing = false; });
+  }
+
+  function drawWave() {
+    const hexColor = selectedG > 100 ? (selectedR > 100 ? '#ffb703' : '#38b000') : '#ff416c';
+    const baseColor = selectedG > 100 ? (selectedR > 100 ? 'rgba(255,183,3,0.15)' : 'rgba(56,176,0,0.15)') : 'rgba(255,65,108,0.15)';
+    drawCanvasBars(ctx, canvas, myWave, hexColor, baseColor);
+  }
+
+  function drawCanvasBars(context, canvasObj, wave, topColor, baseColor) {
+    context.clearRect(0, 0, canvasObj.width, canvasObj.height);
+    const bw = canvasObj.width / 16;
+    const g = context.createLinearGradient(0, canvasObj.height, 0, 0);
+    g.addColorStop(0, baseColor);
+    g.addColorStop(1, topColor);
+
+    for (let i = 0; i < 16; i++) {
+      const h = (wave[i] / 255) * canvasObj.height;
+      if (h < 1) continue;
+      const x = i * bw;
+      const y = canvasObj.height - h;
+      context.fillStyle = g;
+      context.fillRect(x + 2, y, bw - 4, h);
+      context.fillStyle = '#ffffff';
+      context.fillRect(x + 2, y, bw - 4, 2);
+    }
+  }
+
+  function sendWaveforms() {
+    if (!mqttClient) return;
+    if (navigator.vibrate) navigator.vibrate(50);
+    setLog(`⚡ Custom Waveform transmitted to your partner (${durationSec}s)!`, 'sent');
+
+    const colorStr = `${selectedR},${selectedG}`;
+    const dataStr = myWave.join(',');
+
+    // Transmit to Partner over MQTT Cloud — Partner's Phone feeds it into Partner's ESP32!
+    mqttClient.publish(topicName, JSON.stringify({
+      type:     'waveform',
+      data:     dataStr,
+      color:    colorStr,
+      duration: durationSec,
+      sender:   myName,
+      timestamp: Date.now()
+    }));
+  }
+
+  function sendHeartTap() {
+    if (!mqttClient) return;
+    if (navigator.vibrate) navigator.vibrate(50);
+    setLog("❤️ Heart tap sent!", 'sent');
+
+    mqttClient.publish(topicName, JSON.stringify({ sender: myName, timestamp: Date.now() }));
+  }
+
+  function onPartnerWaveform(sender, dataStr, colorStr, dur) {
+    pWave = (dataStr || '').split(',').map(Number);
+
+    document.getElementById('incomingWrap').classList.add('visible');
+    inCanvas.width = inCanvas.offsetWidth;
+    inCanvas.height = inCanvas.offsetHeight;
+    drawCanvasBars(inCtx, inCanvas, pWave, '#c084fc', 'rgba(192,132,252,0.15)');
+
+    flashBody();
+    if (navigator.vibrate) navigator.vibrate([100,50,200,50,100]);
+    setLog(`🎨 Waveform from ${sender} (${dur}s)! Playing on your ESP32...`, 'received');
+
+    // Send to partner's connected ESP32 over BLE!
+    sendToESP32(`WAVE:${dur}:${colorStr || '255,0'}:${dataStr}`);
+  }
+
+  function onPartnerTouch(sender) {
+    flashBody();
+    if (navigator.vibrate) navigator.vibrate([150,70,150,70,300]);
+    setLog(`❤️ Touch from ${sender}! Playing on your ESP32...`, 'received');
+
+    // Send to partner's connected ESP32 over BLE!
+    sendToESP32("TOUCH");
+  }
+
+  function flashBody() {
+    document.body.classList.remove('flash-received');
+    void document.body.offsetWidth;
+    document.body.classList.add('flash-received');
+  }
+
+  function setLog(msg, cls) {
+    const lb = document.getElementById('logBox');
+    lb.textContent = msg;
+    lb.className = 'log-box' + (cls ? ' ' + cls : '');
+  }
+</script>
+
+</body>
+</html>

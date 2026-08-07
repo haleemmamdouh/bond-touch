@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bond Touch — Real-Time Wearable Companion</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #030305;
+      --card-bg: rgba(22, 22, 29, 0.75);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text-main: #ffffff;
+      --text-sub: #8e8e93;
+      --text-muted: #55555e;
+      --accent: #ff2d55;
+      --accent-glow: rgba(255, 45, 85, 0.35);
+      --cyan: #32ade6;
+      --green: #30d158;
+      --amber: #ff9f0a;
+      --purple: #af52de;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(255, 45, 85, 0.12) 0%, transparent 65%),
+        radial-gradient(circle at 100% 100%, rgba(50, 173, 230, 0.06) 0%, transparent 50%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      overflow-x: hidden;
+      transition: background-color 0.4s ease;
+    }
+
+    body.incoming-flash { animation: ambientPulse 1.2s ease-out; }
+    @keyframes ambientPulse { 0% { background-color: rgba(255, 45, 85, 0.25); } 50% { background-color: rgba(255, 45, 85, 0.1); } 100% { background-color: var(--bg); } }
+
+    .app-shell { width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .header { text-align: center; margin-bottom: 4px; }
+    .brand-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+    .brand-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; background: linear-gradient(180deg, #ffffff 0%, #a1a1a6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .glass-card {
+      width: 100%;
+      background: var(--card-bg);
+      backdrop-filter: blur(40px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    .input-group { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+    .input-field { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; color: var(--text-main); font-size: 14px; outline: none; }
+    .input-field:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+
+    .btn-main {
+      width: 100%; background: linear-gradient(180deg, #ff3b30 0%, #d70015 100%); color: #ffffff; border: none; border-radius: 14px; padding: 14px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 16px rgba(215, 0, 21, 0.4); transition: transform 0.15s ease;
+    }
+    .btn-main:active { transform: scale(0.97); }
+
+    .btn-secondary { width: 100%; background: rgba(255, 255, 255, 0.06); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 16px; }
+
+    .status-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; width: 100%; margin-bottom: 12px; }
+    .status-pill { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 6px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); border-radius: 14px; font-size: 10px; font-weight: 600; color: var(--text-sub); }
+    .pill-val { font-size: 11px; font-weight: 700; color: var(--text-main); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+    .dot-online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-alert { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    /* PARTNER WEARABLE CARD */
+    .partner-card {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    .partner-card.connected { border-color: var(--green); background: rgba(48, 209, 88, 0.08); }
+    .partner-card.disconnected { border-color: var(--accent); background: rgba(255, 45, 85, 0.08); }
+
+    .partner-title { font-size: 12px; font-weight: 700; color: var(--text-main); }
+    .partner-status { font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+
+    .color-section { width: 100%; margin-bottom: 16px; }
+    .color-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-sub); margin-bottom: 8px; }
+    .color-row { display: flex; gap: 8px; justify-content: space-between; }
+    .swatch { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s; }
+    .swatch.selected { border-color: #ffffff; transform: scale(1.15); box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+
+    .touch-stage { position: relative; width: 150px; height: 150px; display: flex; align-items: center; justify-content: center; margin: 4px 0 10px 0; }
+    .stage-ripple { position: absolute; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); opacity: 0; transform: scale(0.5); pointer-events: none; }
+    .stage-ripple.active { animation: rippleExpand 1s cubic-bezier(0.1, 0.8, 0.3, 1); }
+    @keyframes rippleExpand { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+
+    .touch-button { position: relative; z-index: 2; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #2a2a30 0%, #121216 100%); border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; transition: transform 0.15s; }
+    .touch-button:active { transform: scale(0.92); }
+
+    .saved-pattern-badge {
+      font-size: 11px; font-weight: 600; color: var(--cyan); background: rgba(50, 173, 230, 0.1); border: 1px solid rgba(50, 173, 230, 0.3); border-radius: 12px; padding: 4px 10px; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
+    }
+
+    .waveform-card { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); border-radius: 18px; padding: 14px; margin-bottom: 16px; }
+    .waveform-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .waveform-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-sub); }
+    canvas { width: 100%; height: 80px; border-radius: 10px; background: #050508; border: 1px solid rgba(255, 255, 255, 0.08); touch-action: none; }
+    .preset-row { display: flex; gap: 4px; margin-top: 8px; }
+    .btn-preset { flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: var(--text-sub); padding: 6px; border-radius: 8px; font-size: 10px; font-weight: 600; cursor: pointer; }
+
+    .log-card { width: 100%; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px; font-size: 12px; color: var(--text-sub); text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .log-card.received { border-color: var(--accent); color: var(--accent); background: rgba(255, 45, 85, 0.12); }
+    .log-card.sent { border-color: var(--cyan); color: var(--cyan); background: rgba(50, 173, 230, 0.1); }
+    .log-card.fail { border-color: var(--accent); color: #ff3b30; background: rgba(255, 59, 48, 0.2); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    
+    <div class="header">
+      <div class="brand-tag">STATUS & FAIL FEEDBACK SUITE</div>
+      <h1 class="brand-title">Bond Touch</h1>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginCard" class="glass-card">
+      <h2 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Pair Companion</h2>
+      <p style="font-size: 12px; color: var(--text-sub); text-align: center;">Enter your name and shared 6-digit pair code.</p>
+
+      <div class="input-group">
+        <input type="text" id="nameInput" class="input-field" placeholder="Your Name (e.g. Ahmed)">
+        <input type="number" id="codeInput" class="input-field" placeholder="6-Digit Pair Code (e.g. 102030)" maxlength="8">
+        <button class="btn-main" onclick="startSession()">Connect Suite</button>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="mainDashboard" class="glass-card" style="display: none;">
+      
+      <!-- STATUS BAR -->
+      <div class="status-bar">
+        <div class="status-pill">
+          <div id="cloudDot" class="dot"></div>
+          <span>CLOUD</span>
+          <span id="cloudTxt" class="pill-val">Offline</span>
+        </div>
+        <div class="status-pill">
+          <div id="bleDot" class="dot"></div>
+          <span>YOUR ESP</span>
+          <span id="bleTxt" class="pill-val">Off</span>
+        </div>
+        <div class="status-pill">
+          <div id="partnerDot" class="dot"></div>
+          <span>PARTNER ESP</span>
+          <span id="partnerStatusTxt" class="pill-val">Off</span>
+        </div>
+      </div>
+
+      <!-- PARTNER WEARABLE STATUS WIDGET -->
+      <div id="partnerCard" class="partner-card disconnected">
+        <span class="partner-title">Partner Wearable Status</span>
+        <span id="partnerWearableTag" class="partner-status" style="color: var(--accent);">🔴 NOT CONNECTED</span>
+      </div>
+
+      <!-- BLE PAIR BUTTON -->
+      <button id="btnBLE" class="btn-secondary" onclick="connectBLE()">🔵 Pair ESP32 Bluetooth</button>
+
+      <!-- COLOR SELECTOR -->
+      <div class="color-section">
+        <div class="color-title">🎨 Select Light Color</div>
+        <div class="color-row">
+          <div class="swatch selected" style="background:#ff2d55" onclick="selectColor(255,45,85,this)"></div>
+          <div class="swatch" style="background:#ff3b30" onclick="selectColor(255,0,0,this)"></div>
+          <div class="swatch" style="background:#30d158" onclick="selectColor(0,255,0,this)"></div>
+          <div class="swatch" style="background:#0a84ff" onclick="selectColor(0,0,255,this)"></div>
+          <div class="swatch" style="background:#ffd60a" onclick="selectColor(255,214,10,this)"></div>
+          <div class="swatch" style="background:#af52de" onclick="selectColor(175,82,222,this)"></div>
+          <div class="swatch" style="background:#ffffff" onclick="selectColor(255,255,255,this)"></div>
+        </div>
+      </div>
+
+      <!-- TOUCH STAGE -->
+      <div class="touch-stage">
+        <div class="stage-ripple" id="stageRipple"></div>
+        <div class="touch-button" id="touchBtn" onclick="sendHeartTap()">
+          <span style="font-size: 24px;">⚡</span>
+        </div>
+      </div>
+
+      <!-- SAVED PATTERN BADGE -->
+      <div class="saved-pattern-badge">
+        <span id="savedPatternLabel">⚡ Active Touch Mode: Default Heartbeat</span>
+        <button style="background:none; border:none; color:var(--text-sub); font-size:10px; cursor:pointer; text-decoration:underline;" onclick="resetTouchPattern()">Reset</button>
+      </div>
+
+      <!-- EQUALIZER WAVEFORM DRAW -->
+      <div class="waveform-card">
+        <div class="waveform-header">
+          <span class="waveform-title">Pattern Generator & Saved Touch</span>
+          <span style="font-size: 10px; color: var(--accent);">16 Equalizer Steps</span>
+        </div>
+        <canvas id="waveCanvas"></canvas>
+        
+        <div class="preset-row">
+          <button class="btn-preset" onclick="setPreset('pulse')">Pulse</button>
+          <button class="btn-preset" onclick="setPreset('fade')">Fade</button>
+          <button class="btn-preset" onclick="setPreset('strobe')">⚡ Strobe</button>
+          <button class="btn-preset" onclick="setPreset('clear')">Clear</button>
+        </div>
+      </div>
+
+      <!-- TRANSMIT & SAVE BUTTON -->
+      <button class="btn-main" onclick="sendAndSaveWaveform()" style="margin-bottom: 14px;">Save & Transmit Saved Pattern ⚡</button>
+
+      <!-- LIVE LOG FEED -->
+      <div id="logBox" class="log-card">Pair ESP32 Bluetooth to start.</div>
+
+    </div>
+
+  </div>
+
+  <script>
+    const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+    const CHAR_RX_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+    const CHAR_TX_UUID = 'a3c87500-8ed3-4bdf-8a39-a01bebede295';
+    const MQTT_BROKER  = 'wss://broker.emqx.io:8084/mqtt';
+
+    let myName = '', pairCode = '', topicName = '', statusTopic = '';
+    let mqttClient = null, bleDevice = null, rxChar = null;
+    let partnerBleConnected = false;
+    let wave = [0,60,160,255,200,120,60,20,80,180,255,180,80,20,0,0];
+    let savedPatternName = 'Default Heartbeat';
+    let savedWave = null;
+    let activeR = 255, activeG = 45, activeB = 85;
+    let canvas, ctx;
+    let lastTapTime = 0;
+
+    function selectColor(r, g, b, el) {
+      activeR = r; activeG = g; activeB = b;
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+      drawCanvas();
+    }
+
+    function startSession() {
+      myName = document.getElementById('nameInput').value.trim();
+      pairCode = document.getElementById('codeInput').value.trim();
+      if (!myName || !pairCode) { alert('Enter your name and pair code!'); return; }
+
+      topicName = `bondtouch/pair_${pairCode}`;
+      statusTopic = `bondtouch/status_${pairCode}`;
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('mainDashboard').style.display = 'flex';
+
+      loadSavedPattern();
+      initCanvas();
+      initMQTT();
+    }
+
+    function loadSavedPattern() {
+      const stored = localStorage.getItem('bt_saved_pattern');
+      if (stored) {
+        try {
+          const p = JSON.parse(stored);
+          savedWave = p.wave;
+          savedPatternName = p.name || 'Custom Saved Pattern';
+          document.getElementById('savedPatternLabel').textContent = `⚡ Active Touch Mode: ${savedPatternName}`;
+        } catch(e){}
+      }
+    }
+
+    function resetTouchPattern() {
+      localStorage.removeItem('bt_saved_pattern');
+      savedWave = null;
+      savedPatternName = 'Default Heartbeat';
+      document.getElementById('savedPatternLabel').textContent = `⚡ Active Touch Mode: Default Heartbeat`;
+      setLog('🔄 Reset touch mode to Default Heartbeat!', 'sent');
+    }
+
+    function broadcastBLEStatus(isConnected) {
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(statusTopic, JSON.stringify({
+          type: isConnected ? 'ble_connect' : 'ble_disconnect',
+          sender: myName
+        }), { retain: true });
+      }
+    }
+
+    function requestPartnerStatus() {
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(topicName, JSON.stringify({
+          type: 'request_status',
+          sender: myName
+        }));
+      }
+    }
+
+    function updatePartnerUI(connected, senderName) {
+      partnerBleConnected = connected;
+      const card = document.getElementById('partnerCard');
+      const tag = document.getElementById('partnerWearableTag');
+      const dot = document.getElementById('partnerDot');
+      const statusTxt = document.getElementById('partnerStatusTxt');
+
+      if (connected) {
+        card.className = 'partner-card connected';
+        tag.innerHTML = `🟢 ${senderName || 'PARTNER'} CONNECTED`;
+        tag.style.color = 'var(--green)';
+        dot.className = 'dot dot-online';
+        statusTxt.textContent = 'Online';
+      } else {
+        card.className = 'partner-card disconnected';
+        tag.innerHTML = `🔴 NOT CONNECTED`;
+        tag.style.color = 'var(--accent)';
+        dot.className = 'dot dot-alert';
+        statusTxt.textContent = 'Off';
+      }
+    }
+
+    function initMQTT() {
+      mqttClient = mqtt.connect(MQTT_BROKER, { clientId: 'bt_web_' + Math.random().toString(16).slice(2, 8) });
+      
+      mqttClient.on('connect', () => {
+        document.getElementById('cloudDot').className = 'dot dot-online';
+        document.getElementById('cloudTxt').textContent = 'Live';
+        mqttClient.subscribe(topicName);
+        mqttClient.subscribe(statusTopic);
+        setLog('☁️ Cloud connected. Pair ESP32 Bluetooth.', '');
+        
+        // Immediately query partner status upon joining
+        setTimeout(requestPartnerStatus, 300);
+      });
+
+      mqttClient.on('offline', () => {
+        document.getElementById('cloudDot').className = 'dot dot-alert';
+        document.getElementById('cloudTxt').textContent = 'Offline';
+      });
+
+      mqttClient.on('message', (topic, msg) => {
+        try {
+          const p = JSON.parse(msg.toString());
+
+          // Request status ping response
+          if (p.type === 'request_status' && p.sender && p.sender.toLowerCase() !== myName.toLowerCase()) {
+            if (rxChar) broadcastBLEStatus(true);
+            return;
+          }
+
+          if (!p.sender || p.sender.toLowerCase() === myName.toLowerCase()) return;
+
+          if (p.type === 'ble_connect') {
+            updatePartnerUI(true, p.sender);
+            setLog(`🟢 ${p.sender}'s wearable connected! Your ESP flashing GREEN.`, 'received');
+            sendToESP32('PARTNER_BLE_ON');
+            return;
+          }
+
+          if (p.type === 'ble_disconnect') {
+            updatePartnerUI(false, p.sender);
+            setLog(`🔴 ${p.sender}'s wearable disconnected.`, 'fail');
+            return;
+          }
+
+          if (p.type === 'waveform') receiveWave(p.sender, p.data, p.color);
+          else receiveTouch(p.sender);
+        } catch(e){}
+      });
+    }
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) { alert('Web Bluetooth is supported in Chrome (Android, Laptop). Please open in Chrome!'); return; }
+      try {
+        setLog('🔵 Scanning for BondTouch ESP32...', '');
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ namePrefix: 'BondTouch' }, { services: [SERVICE_UUID] }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        bleDevice.addEventListener('gattserverdisconnected', () => {
+          document.getElementById('bleDot').className = 'dot dot-alert';
+          document.getElementById('bleTxt').textContent = 'Off';
+          document.getElementById('btnBLE').style.display = 'block';
+          rxChar = null;
+          broadcastBLEStatus(false);
+          setLog('🔴 ESP32 Bluetooth Disconnected (5s Blue Strobe playing)', 'fail');
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        rxChar = await service.getCharacteristic(CHAR_RX_UUID);
+
+        const txChar = await service.getCharacteristic(CHAR_TX_UUID);
+        await txChar.startNotifications();
+        txChar.addEventListener('characteristicvaluechanged', (e) => {
+          try {
+            const dec = new TextDecoder();
+            const str = dec.decode(e.target.value);
+            if (str.includes('BLE_ON')) {
+              broadcastBLEStatus(true);
+              return;
+            }
+          } catch(err){}
+          if (navigator.vibrate) navigator.vibrate(60);
+          sendHeartTap();
+        });
+
+        document.getElementById('bleDot').className = 'dot dot-online';
+        document.getElementById('bleTxt').textContent = 'Connected';
+        document.getElementById('btnBLE').style.display = 'none';
+        setLog('🔵 ESP32 Bluetooth Connected! (Blue Flicker)', 'sent');
+        if (navigator.vibrate) navigator.vibrate(200);
+
+        broadcastBLEStatus(true);
+
+      } catch(e) {
+        setLog('⚠️ BLE connect error: ' + e.message, '');
+      }
+    }
+
+    async function sendToESP32(str) {
+      if (!rxChar) return;
+      try {
+        const enc = new TextEncoder();
+        const data = enc.encode(str);
+        if (rxChar.writeValueWithResponse) await rxChar.writeValueWithResponse(data);
+        else await rxChar.writeValue(data);
+      } catch(e){}
+    }
+
+    function triggerIncomingVisuals() {
+      document.body.classList.remove('incoming-flash');
+      void document.body.offsetWidth;
+      document.body.classList.add('incoming-flash');
+
+      const r = document.getElementById('stageRipple');
+      r.classList.remove('active');
+      void r.offsetWidth;
+      r.classList.add('active');
+    }
+
+    function triggerDeliveryFail() {
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      setLog(`❌ DELIVERY FAIL! Partner wearable is NOT connected!`, 'fail');
+      sendToESP32('FAIL'); // TRIGGERS 3 RED FLICKERS + FAIL BUZZER TONE ON YOUR ESP32!
+    }
+
+    function receiveTouch(sender) {
+      triggerIncomingVisuals();
+      if (navigator.vibrate) navigator.vibrate([100, 50, 200, 50, 100]);
+      setLog(`🔴 RED TOUCH FROM ${sender.toUpperCase()}!`, 'received');
+      sendToESP32('TOUCH');
+    }
+
+    function receiveWave(sender, dataStr, colorStr) {
+      triggerIncomingVisuals();
+      if (navigator.vibrate) navigator.vibrate([80, 40, 160, 40, 80]);
+      setLog(`🎨 SAVED PATTERN FROM ${sender.toUpperCase()}!`, 'received');
+      sendToESP32(`WAVE:3:${colorStr || '255,0,0'}:${dataStr}`);
+    }
+
+    function sendHeartTap() {
+      if (!mqttClient) return;
+      const now = Date.now();
+      if (now - lastTapTime < 1000) return;
+      lastTapTime = now;
+
+      // 🛑 CHECK IF PARTNER WEARABLE IS CONNECTED 🛑
+      if (!partnerBleConnected) {
+        triggerDeliveryFail();
+        return;
+      }
+
+      if (navigator.vibrate) navigator.vibrate(50);
+
+      if (savedWave) {
+        setLog(`⚡ Transmitted saved pattern (${savedPatternName}) to partner!`, 'sent');
+        const colorStr = `${activeR},${activeG},${activeB}`;
+        mqttClient.publish(topicName, JSON.stringify({
+          type: 'waveform', data: savedWave.join(','), color: colorStr, duration: 3, sender: myName, timestamp: now
+        }));
+      } else {
+        setLog('⚡ Touch signal sent to partner!', 'sent');
+        mqttClient.publish(topicName, JSON.stringify({ sender: myName, timestamp: now }));
+      }
+    }
+
+    function sendAndSaveWaveform() {
+      if (!mqttClient) return;
+      if (navigator.vibrate) navigator.vibrate(80);
+
+      // Save as active touch pattern
+      savedWave = [...wave];
+      savedPatternName = 'Custom Pattern';
+      localStorage.setItem('bt_saved_pattern', JSON.stringify({ wave: savedWave, name: savedPatternName }));
+      document.getElementById('savedPatternLabel').textContent = `⚡ Active Touch Mode: ${savedPatternName}`;
+
+      // 🛑 CHECK IF PARTNER WEARABLE IS CONNECTED 🛑
+      if (!partnerBleConnected) {
+        triggerDeliveryFail();
+        return;
+      }
+
+      setLog('⚡ Saved as default touch & transmitted to partner!', 'sent');
+      const payload = wave.join(',');
+      const colorStr = `${activeR},${activeG},${activeB}`;
+      mqttClient.publish(topicName, JSON.stringify({
+        type: 'waveform', data: payload, color: colorStr, duration: 3, sender: myName, timestamp: Date.now()
+      }));
+    }
+
+    function initCanvas() {
+      canvas = document.getElementById('waveCanvas');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      ctx = canvas.getContext('2d');
+      drawCanvas();
+
+      canvas.addEventListener('pointerdown', handleDraw);
+      canvas.addEventListener('pointermove', (e) => { if (e.buttons === 1) handleDraw(e); });
+    }
+
+    function handleDraw(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const idx = Math.min(15, Math.max(0, Math.floor((x / canvas.width) * 16)));
+      const val = Math.min(255, Math.max(0, Math.floor((1 - y / canvas.height) * 255)));
+      wave[idx] = val;
+      drawCanvas();
+    }
+
+    function drawCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const bw = canvas.width / 16;
+      for (let i = 0; i < 16; i++) {
+        const h = (wave[i] / 255) * canvas.height;
+        ctx.fillStyle = `rgb(${activeR},${activeG},${activeB})`;
+        ctx.fillRect(i * bw + 2, canvas.height - h, bw - 4, h);
+      }
+    }
+
+    function setPreset(type) {
+      if (type === 'pulse')  { wave = [0,60,160,255,120,30,0,100,255,180,40,0,0,0,0,0]; savedPatternName = 'Pulse'; }
+      if (type === 'fade')   { wave = [10,40,100,170,220,255,220,170,100,40,10,0,0,0,0,0]; savedPatternName = 'Fade'; }
+      if (type === 'strobe') { wave = [255,0,255,0,255,0,255,0,255,0,255,0,255,0,255,0]; savedPatternName = 'Strobe'; }
+      if (type === 'clear')  { wave = new Array(16).fill(0); }
+
+      if (type !== 'clear') {
+        savedWave = [...wave];
+        localStorage.setItem('bt_saved_pattern', JSON.stringify({ wave: savedWave, name: savedPatternName }));
+        document.getElementById('savedPatternLabel').textContent = `⚡ Active Touch Mode: ${savedPatternName}`;
+      }
+      drawCanvas();
+    }
+
+    function setLog(msg, type) {
+      const lb = document.getElementById('logBox');
+      lb.textContent = msg;
+      lb.className = 'log-card' + (type ? ' ' + type : '');
+    }
+  </script>
+</body>
+</html>

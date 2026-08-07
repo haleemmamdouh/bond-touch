@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-C3 SuperMini — Breadboard Wiring Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #0b0b0e;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff416c, #ff4b2b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    p.subtitle {
+      color: #8a8a9e;
+      font-size: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .diagram-container {
+      background: #141419;
+      border: 1px solid #262633;
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 840px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+      background: #09090c;
+      border-radius: 16px;
+      border: 1px solid #1e1e28;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #a0a0b8;
+    }
+
+    .color-box {
+      width: 16px;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .pin-table {
+      width: 100%;
+      margin-top: 24px;
+      border-collapse: collapse;
+      background: #09090c;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #262633;
+    }
+
+    .pin-table th, .pin-table td {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13.5px;
+      border-bottom: 1px solid #1c1c26;
+    }
+
+    .pin-table th {
+      background: #141419;
+      color: #ff416c;
+      font-weight: 700;
+    }
+
+    .wire-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚡ ESP32-C3 SuperMini Wiring Diagram</h1>
+  <p class="subtitle">Interactive visual connection schematic for 3-Pin Red/Green LED & Touch Sensor</p>
+
+  <div class="diagram-container">
+    <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- BREADBOARD BACKGROUND -->
+      <rect x="50" y="40" width="700" height="420" rx="16" fill="#181820" stroke="#2c2c3a" stroke-width="2"/>
+      
+      <!-- BREADBOARD GRID PIN HOLES -->
+      <g fill="#0b0b0e" stroke="#262633" stroke-width="1">
+        <!-- Rows of breadboard holes -->
+        <pattern id="breadboardPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r="3" fill="#09090c" stroke="#22222e" stroke-width="1"/>
+        </pattern>
+        <rect x="70" y="60" width="660" height="380" fill="url(#breadboardPattern)" opacity="0.6"/>
+      </g>
+
+      <!-- ESP32-C3 SUPERMINI BOARD -->
+      <g transform="translate(300, 160)">
+        <!-- Board PCB -->
+        <rect x="0" y="0" width="200" height="180" rx="10" fill="#000000" stroke="#ff416c" stroke-width="2"/>
+        <!-- Chip -->
+        <rect x="60" y="40" width="80" height="80" rx="6" fill="#1a1a24" stroke="#333344" stroke-width="1.5"/>
+        <text x="100" y="85" fill="#8888aa" font-size="11" font-weight="700" text-anchor="middle" font-family="Outfit">ESP32-C3</text>
+        <text x="100" y="100" fill="#ff416c" font-size="10" font-weight="600" text-anchor="middle" font-family="Outfit">SUPERMINI</text>
+
+        <!-- Micro USB Port -->
+        <rect x="70" y="170" width="60" height="15" rx="3" fill="#444455"/>
+
+        <!-- PINS LEFT SIDE -->
+        <!-- 3V3 (y=20) -->
+        <circle cx="10" cy="20" r="6" fill="#ef4444"/>
+        <text x="24" y="24" fill="#ffffff" font-size="10" font-weight="700" font-family="JetBrains Mono">3V3</text>
+
+        <!-- GND (y=60) -->
+        <circle cx="10" cy="60" r="6" fill="#333344"/>
+        <text x="24" y="64" fill="#ffffff" font-size="10" font-weight="700" font-family="JetBrains Mono">GND</text>
+
+        <!-- GPIO 0 (y=100) -->
+        <circle cx="10" cy="100" r="6" fill="#ff416c"/>
+        <text x="24" y="104" fill="#ffffff" font-size="10" font-weight="700" font-family="JetBrains Mono">IO0 (RED)</text>
+
+        <!-- GPIO 1 (y=140) -->
+        <circle cx="10" cy="140" r="6" fill="#22c55e"/>
+        <text x="24" y="144" fill="#ffffff" font-size="10" font-weight="700" font-family="JetBrains Mono">IO1 (GRN)</text>
+
+        <!-- PINS RIGHT SIDE -->
+        <!-- GPIO 4 (y=100) -->
+        <circle cx="190" cy="100" r="6" fill="#f97316"/>
+        <text x="176" y="104" fill="#ffffff" font-size="10" font-weight="700" text-anchor="end" font-family="JetBrains Mono">IO4 (TOUCH)</text>
+
+        <!-- GND (y=140) -->
+        <circle cx="190" cy="140" r="6" fill="#333344"/>
+        <text x="176" y="144" fill="#ffffff" font-size="10" font-weight="700" text-anchor="end" font-family="JetBrains Mono">GND</text>
+      </g>
+
+      <!-- 3-PIN RED/GREEN LED MODULE (TOP LEFT) -->
+      <g transform="translate(100, 80)">
+        <rect x="0" y="0" width="120" height="70" rx="8" fill="#14141f" stroke="#3b82f6" stroke-width="1.5"/>
+        <!-- LED DOME -->
+        <circle cx="60" cy="25" r="14" fill="#ff416c" opacity="0.8" stroke="#ffffff" stroke-width="1"/>
+        <text x="60" y="55" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">3-PIN R/G LED</text>
+
+        <!-- LED PINS -->
+        <circle id="led_r" cx="25" cy="70" r="5" fill="#ff416c"/>
+        <text x="25" y="65" fill="#aaa" font-size="9" text-anchor="middle">R</text>
+
+        <circle id="led_g" cx="60" cy="70" r="5" fill="#22c55e"/>
+        <text x="60" y="65" fill="#aaa" font-size="9" text-anchor="middle">G</text>
+
+        <circle id="led_gnd" cx="95" cy="70" r="5" fill="#666"/>
+        <text x="95" y="65" fill="#aaa" font-size="9" text-anchor="middle">-</text>
+      </g>
+
+      <!-- 3-PIN TOUCH SENSOR MODULE (BOTTOM RIGHT) -->
+      <g transform="translate(580, 320)">
+        <rect x="0" y="0" width="130" height="80" rx="8" fill="#14141f" stroke="#f97316" stroke-width="1.5"/>
+        <!-- TOUCH PAD BUTTON -->
+        <circle cx="65" cy="35" r="16" fill="#ef4444" stroke="#ffffff" stroke-width="1.5"/>
+        <text x="65" y="70" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">TOUCH SENSOR</text>
+
+        <!-- TOUCH PINS -->
+        <circle id="touch_vcc" cx="30" cy="0" r="5" fill="#ef4444"/>
+        <text x="30" y="15" fill="#aaa" font-size="9" text-anchor="middle">VCC</text>
+
+        <circle id="touch_gnd" cx="65" cy="0" r="5" fill="#666"/>
+        <text x="65" y="15" fill="#aaa" font-size="9" text-anchor="middle">GND</text>
+
+        <circle id="touch_sig" cx="100" cy="0" r="5" fill="#f97316"/>
+        <text x="100" y="15" fill="#aaa" font-size="9" text-anchor="middle">SIG</text>
+      </g>
+
+      <!-- RESISTORS -->
+      <!-- Resistor 1 (Red) -->
+      <g transform="translate(230, 180)">
+        <rect x="0" y="0" width="40" height="12" rx="3" fill="#d97706" stroke="#ffffff" stroke-width="0.5"/>
+        <text x="20" y="9" fill="#000" font-size="8" font-weight="800" text-anchor="middle">1kΩ</text>
+      </g>
+      <!-- Resistor 2 (Green) -->
+      <g transform="translate(230, 220)">
+        <rect x="0" y="0" width="40" height="12" rx="3" fill="#d97706" stroke="#ffffff" stroke-width="0.5"/>
+        <text x="20" y="9" fill="#000" font-size="8" font-weight="800" text-anchor="middle">1kΩ</text>
+      </g>
+
+      <!-- WIRE CONNECTIONS -->
+
+      <!-- 1. RED LED WIRE: GPIO 0 (310, 260) -> Resistor -> LED R (125, 150) -->
+      <path d="M 310 260 L 270 260 L 270 186 L 230 186 M 230 186 L 125 186 L 125 150" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- 2. GREEN LED WIRE: GPIO 1 (310, 300) -> Resistor -> LED G (160, 150) -->
+      <path d="M 310 300 L 270 300 L 270 226 L 230 226 M 230 226 L 160 226 L 160 150" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- 3. LED GND WIRE: LED (-) (195, 150) -> ESP32 GND (310, 220) -->
+      <path d="M 195 150 L 195 220 L 310 220" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="4" stroke-linecap="round"/>
+
+      <!-- 4. TOUCH VCC WIRE: ESP32 3V3 (310, 180) -> Touch VCC (610, 320) -->
+      <path d="M 310 180 L 290 180 L 290 110 L 610 110 L 610 320" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- 5. TOUCH GND WIRE: ESP32 GND (490, 300) -> Touch GND (645, 320) -->
+      <path d="M 490 300 L 520 300 L 520 350 L 645 350 L 645 320" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="4" stroke-linecap="round"/>
+
+      <!-- 6. TOUCH SIG WIRE: ESP32 GPIO 4 (490, 260) -> Touch SIG (680, 320) -->
+      <path d="M 490 260 L 680 260 L 680 320" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+
+    </svg>
+
+    <!-- LEGEND -->
+    <div class="legend">
+      <div class="legend-item"><div class="color-box" style="background:#ef4444;"></div>Red LED Wire (GPIO 0)</div>
+      <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div>Green LED Wire (GPIO 1)</div>
+      <div class="legend-item"><div class="color-box" style="background:#f97316;"></div>Touch Signal Wire (GPIO 4)</div>
+      <div class="legend-item"><div class="color-box" style="background:#dc2626;"></div>Power VCC 3.3V</div>
+      <div class="legend-item"><div class="color-box" style="background:#64748b;"></div>Ground GND</div>
+    </div>
+
+    <!-- TABLE -->
+    <table class="pin-table">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Component Pin</th>
+          <th>Where it plugs on ESP32-C3</th>
+          <th>Wire Color</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>3-Pin LED Module</strong></td>
+          <td>Pin <code>R</code> (Red +)</td>
+          <td><strong>GPIO 0</strong> (Through 1kΩ Resistor)</td>
+          <td><span class="wire-badge" style="background:rgba(239,68,68,0.2); color:#ef4444;">RED WIRE</span></td>
+        </tr>
+        <tr>
+          <td><strong>3-Pin LED Module</strong></td>
+          <td>Pin <code>G</code> (Green +)</td>
+          <td><strong>GPIO 1</strong> (Through 1kΩ Resistor)</td>
+          <td><span class="wire-badge" style="background:rgba(34,197,94,0.2); color:#22c55e;">GREEN WIRE</span></td>
+        </tr>
+        <tr>
+          <td><strong>3-Pin LED Module</strong></td>
+          <td>Pin <code>-</code> (Ground)</td>
+          <td><strong>GND Pin</strong></td>
+          <td><span class="wire-badge" style="background:rgba(100,116,139,0.2); color:#94a3b8;">GREY / BLACK</span></td>
+        </tr>
+        <tr>
+          <td><strong>Touch Sensor Module</strong></td>
+          <td>Pin <code>VCC</code> (+)</td>
+          <td><strong>3V3 Pin</strong> (3.3V Power)</td>
+          <td><span class="wire-badge" style="background:rgba(220,38,38,0.2); color:#f87171;">RED POWER</span></td>
+        </tr>
+        <tr>
+          <td><strong>Touch Sensor Module</strong></td>
+          <td>Pin <code>GND</code> (-)</td>
+          <td><strong>GND Pin</strong></td>
+          <td><span class="wire-badge" style="background:rgba(100,116,139,0.2); color:#94a3b8;">GREY / BLACK</span></td>
+        </tr>
+        <tr>
+          <td><strong>Touch Sensor Module</strong></td>
+          <td>Pin <code>SIG</code> (Signal)</td>
+          <td><strong>GPIO 4 Pin</strong></td>
+          <td><span class="wire-badge" style="background:rgba(249,115,22,0.2); color:#fb923c;">ORANGE WIRE</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
