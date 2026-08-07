@@ -1,0 +1,193 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000012A00000000000001 /* BondTouchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000012A00000000000001 /* BondTouchApp.swift */; };
+		A10000022A00000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000022A00000000000002 /* ContentView.swift */; };
+		A10000032A00000000000003 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000032A00000000000003 /* BLEManager.swift */; };
+		A10000042A00000000000004 /* MQTTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000042A00000000000004 /* MQTTManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C10000002A00000000000000 /* BondTouchiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BondTouchiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000012A00000000000001 /* BondTouchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BondTouchApp.swift; sourceTree = "<group>"; };
+		B10000022A00000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B10000032A00000000000003 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		B10000042A00000000000004 /* MQTTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MQTTManager.swift; sourceTree = "<group>"; };
+		B10000052A00000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		D10000002A00000000000000 = {
+			isa = PBXGroup;
+			children = (
+				D10000012A00000000000001 /* BondTouchiOS */,
+				D10000022A00000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D10000012A00000000000001 /* BondTouchiOS */ = {
+			isa = PBXGroup;
+			children = (
+				B10000012A00000000000001 /* BondTouchApp.swift */,
+				B10000022A00000000000002 /* ContentView.swift */,
+				B10000032A00000000000003 /* BLEManager.swift */,
+				B10000042A00000000000004 /* MQTTManager.swift */,
+				B10000052A00000000000005 /* Info.plist */,
+			);
+			path = BondTouchiOS;
+			sourceTree = "<group>";
+		};
+		D10000022A00000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C10000002A00000000000000 /* BondTouchiOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000002A00000000000000 /* BondTouchiOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000002A00000000000000 /* Build configuration list for PBXNativeTarget "BondTouchiOS" */;
+			buildPhases = (
+				G10000002A00000000000000 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BondTouchiOS;
+			productName = BondTouchiOS;
+			productReference = C10000002A00000000000000 /* BondTouchiOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		H10000002A00000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					E10000002A00000000000000 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = F10000012A00000000000001 /* Build configuration list for PBXProject "BondTouchiOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D10000002A00000000000000;
+			productRefGroup = D10000022A00000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10000002A00000000000000 /* BondTouchiOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		G10000002A00000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012A00000000000001 /* BondTouchApp.swift in Sources */,
+				A10000022A00000000000002 /* ContentView.swift in Sources */,
+				A10000032A00000000000003 /* BLEManager.swift in Sources */,
+				A10000042A00000000000004 /* MQTTManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		I10000012A00000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BondTouchiOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bondtouch.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		I10000022A00000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BondTouchiOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bondtouch.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		I10000032A00000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		I10000042A00000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F10000002A00000000000000 /* Build configuration list for PBXNativeTarget "BondTouchiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000012A00000000000001 /* Debug */,
+				I10000022A00000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10000012A00000000000001 /* Build configuration list for PBXProject "BondTouchiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000032A00000000000003 /* Debug */,
+				I10000042A00000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = H10000002A00000000000000 /* Project object */;
+}
