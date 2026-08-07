@@ -1,22 +1,22 @@
 import Foundation
-import CocoaMQTT
+import Combine
 
-class MQTTManager: ObservableObject {
+class MQTTManager: NSObject, ObservableObject, URLSessionWebSocketDelegate {
 
     @Published var connected = false
     @Published var partnerOnline = false
     @Published var partnerName = ""
     @Published var myName = ""
 
-    private var mqtt: CocoaMQTT?
+    private var webSocketTask: URLSessionWebSocketTask?
     private var pairCode = ""
     private var myTopic = ""
     private var pairTopic = ""
     private var myStatusTopic = ""
     private var partnerStatusTopic = ""
     private var lastTapTime: Date = .distantPast
+    private var pingTimer: Timer?
 
-    // Injected callbacks (set by ContentView or App)
     var onTouchReceived: (() -> Void)?
     var bleConnected: Bool = false
 
@@ -26,39 +26,144 @@ class MQTTManager: ObservableObject {
         self.myTopic = "bondtouch/pair_\(pairCode)"
         self.pairTopic = "bondtouch/pair_\(pairCode)"
         self.myStatusTopic = "bondtouch/status_\(pairCode)/\(name)"
-        self.partnerStatusTopic = "bondtouch/status_\(pairCode)/+"
+        self.partnerStatusTopic = "bondtouch/status_\(pairCode)"
     }
 
     func connect() {
-        let clientID = "bt_ios_" + UUID().uuidString.prefix(8)
-        mqtt = CocoaMQTT(clientID: String(clientID), host: "broker.emqx.io", port: 1883)
-        mqtt?.cleanSession = true
-        mqtt?.keepAlive = 30
-        mqtt?.delegate = self
-        _ = mqtt?.connect()
+        guard let url = URL(string: "wss://broker.emqx.io:8084/mqtt") else { return }
+        let session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue.main)
+        webSocketTask = session.webSocketTask(with: url)
+        webSocketTask?.resume()
+        receiveMessage()
+        sendConnectPacket()
+    }
+
+    private func sendConnectPacket() {
+        let clientID = "bt_ios_" + String(UUID().uuidString.prefix(6))
+        var packet = Data([0x10]) // CONNECT
+        var variableHeaderAndPayload = Data([
+            0x00, 0x04, 0x4D, 0x51, 0x54, 0x54, // Protocol Name: MQTT
+            0x04, // Protocol Level: 4 (3.1.1)
+            0x02, // Connect Flags: Clean Session
+            0x00, 0x1E // Keep Alive: 30s
+        ])
+        
+        // Client ID
+        let idData = clientID.data(using: .utf8)!
+        variableHeaderAndPayload.append(UInt8(idData.count >> 8))
+        variableHeaderAndPayload.append(UInt8(idData.count & 0xFF))
+        variableHeaderAndPayload.append(idData)
+
+        encodeRemainingLength(variableHeaderAndPayload.count, into: &packet)
+        packet.append(variableHeaderAndPayload)
+
+        webSocketTask?.send(.data(packet)) { error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    self.connected = true
+                    self.subscribe(topic: self.pairTopic)
+                    self.subscribe(topic: self.partnerStatusTopic)
+                    self.startPingTimer()
+                }
+            }
+        }
+    }
+
+    private func subscribe(topic: String) {
+        var packet = Data([0x82]) // SUBSCRIBE
+        var payload = Data([0x00, 0x01]) // Packet ID: 1
+        
+        let topicData = topic.data(using: .utf8)!
+        payload.append(UInt8(topicData.count >> 8))
+        payload.append(UInt8(topicData.count & 0xFF))
+        payload.append(topicData)
+        payload.append(0x00) // QoS 0
+
+        encodeRemainingLength(payload.count, into: &packet)
+        packet.append(payload)
+
+        webSocketTask?.send(.data(packet), completionHandler: { _ in })
     }
 
     func publishTouch() {
         let now = Date()
         guard now.timeIntervalSince(lastTapTime) > 0.8 else { return }
         lastTapTime = now
-        let payload = ["sender": myName, "timestamp": Int(now.timeIntervalSince1970)] as [String: Any]
-        if let data = try? JSONSerialization.data(withJSONObject: payload),
+        let json: [String: Any] = ["sender": myName, "timestamp": Int(now.timeIntervalSince1970)]
+        if let data = try? JSONSerialization.data(withJSONObject: json),
            let str = String(data: data, encoding: .utf8) {
-            mqtt?.publish(pairTopic, withString: str, qos: .qos0, retained: false)
+            publish(topic: pairTopic, payload: str)
         }
     }
 
-    func broadcastBLEStatus(_ connected: Bool) {
-        guard mqtt?.connState == .connected else { return }
-        let payload = ["type": connected ? "ble_connect" : "ble_disconnect", "sender": myName]
-        if let data = try? JSONSerialization.data(withJSONObject: payload),
+    func broadcastBLEStatus(_ isConnected: Bool) {
+        guard connected else { return }
+        let json: [String: Any] = ["type": isConnected ? "ble_connect" : "ble_disconnect", "sender": myName]
+        if let data = try? JSONSerialization.data(withJSONObject: json),
            let str = String(data: data, encoding: .utf8) {
-            mqtt?.publish(myStatusTopic, withString: str, qos: .qos0, retained: true)
+            publish(topic: myStatusTopic, payload: str)
         }
     }
 
-    private func handleMessage(topic: String, payload: String) {
+    private func publish(topic: String, payload: String) {
+        var packet = Data([0x30]) // PUBLISH QoS 0
+        var payloadData = Data()
+
+        let topicData = topic.data(using: .utf8)!
+        payloadData.append(UInt8(topicData.count >> 8))
+        payloadData.append(UInt8(topicData.count & 0xFF))
+        payloadData.append(topicData)
+        payloadData.append(payload.data(using: .utf8)!)
+
+        encodeRemainingLength(payloadData.count, into: &packet)
+        packet.append(payloadData)
+
+        webSocketTask?.send(.data(packet)) { _ in }
+    }
+
+    private func receiveMessage() {
+        webSocketTask?.receive { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let message):
+                switch message {
+                case .data(let data):
+                    self.parseMQTTPacket(data)
+                case .string(let str):
+                    if let data = str.data(using: .utf8) {
+                        self.parseMQTTPacket(data)
+                    }
+                @unknown default:
+                    break
+                }
+                self.receiveMessage()
+            case .failure:
+                DispatchQueue.main.async { self.connected = false }
+            }
+        }
+    }
+
+    private func parseMQTTPacket(_ data: Data) {
+        guard data.count > 2 else { return }
+        let packetType = data[0] >> 4
+        if packetType == 3 { // PUBLISH packet
+            // Extract payload from publish packet
+            var index = 1
+            while index < data.count && (data[index] & 0x80) != 0 { index += 1 }
+            index += 1
+            guard index + 2 < data.count else { return }
+            let topicLen = Int(data[index]) << 8 | Int(data[index+1])
+            index += 2 + topicLen
+            guard index < data.count else { return }
+
+            let payloadData = data.subdata(in: index..<data.count)
+            if let payloadStr = String(data: payloadData, encoding: .utf8) {
+                handleIncomingMessage(payloadStr)
+            }
+        }
+    }
+
+    private func handleIncomingMessage(_ payload: String) {
         guard let data = payload.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sender = json["sender"] as? String else { return }
@@ -67,23 +172,15 @@ class MQTTManager: ObservableObject {
 
         let type = json["type"] as? String ?? ""
 
-        // Status ping request
-        if type == "request_status" {
-            if bleConnected { broadcastBLEStatus(true) }
-            return
-        }
-
-        // 🟢 Partner connected — send GREEN to ESP
         if type == "ble_connect" {
             DispatchQueue.main.async {
                 self.partnerOnline = true
                 self.partnerName = sender
             }
-            onTouchReceived?()  // Will call BLE sendToESP("PARTNER_BLE_ON")
+            onTouchReceived?()
             return
         }
 
-        // 🔴 Partner disconnected — no green light!
         if type == "ble_disconnect" {
             DispatchQueue.main.async {
                 self.partnerOnline = false
@@ -92,48 +189,24 @@ class MQTTManager: ObservableObject {
             return
         }
 
-        if type == "waveform", let waveData = json["data"] as? String, let color = json["color"] as? String {
-            onTouchReceived?()  // Will call BLE sendToESP("WAVE:3:\(color):\(waveData)")
-            return
-        }
-
-        // Regular touch
         DispatchQueue.main.async { self.partnerName = sender }
         onTouchReceived?()
     }
-}
 
-// ── CocoaMQTTDelegate ─────────────────────────────────────────
-extension MQTTManager: CocoaMQTTDelegate {
-
-    func mqtt(_ mqtt: CocoaMQTT, didConnectAck ack: CocoaMQTTConnAck) {
-        guard ack == .accept else { return }
-        DispatchQueue.main.async { self.connected = true }
-        mqtt.subscribe(pairTopic, qos: .qos0)
-        mqtt.subscribe(partnerStatusTopic, qos: .qos0)
-
-        // Ping partner for status
-        let ping = ["type": "request_status", "sender": myName]
-        if let data = try? JSONSerialization.data(withJSONObject: ping),
-           let str = String(data: data, encoding: .utf8) {
-            mqtt.publish(pairTopic, withString: str)
+    private func startPingTimer() {
+        pingTimer?.invalidate()
+        pingTimer = Timer.scheduledTimer(withTimeInterval: 20.0, repeats: true) { [weak self] _ in
+            self?.webSocketTask?.send(.data(Data([0xC0, 0x00]))) { _ in } // PINGREQ
         }
     }
 
-    func mqtt(_ mqtt: CocoaMQTT, didReceiveMessage message: CocoaMQTTMessage, id: UInt16) {
-        handleMessage(topic: message.topic, payload: message.string ?? "")
-    }
-
-    func mqtt(_ mqtt: CocoaMQTT, didUnsubscribeTopics topics: [String]) {}
-    func mqtt(_ mqtt: CocoaMQTT, didSubscribeTopics success: NSDictionary, failed: [String]) {}
-    func mqtt(_ mqtt: CocoaMQTT, didPublishMessage message: CocoaMQTTMessage, id: UInt16) {}
-    func mqtt(_ mqtt: CocoaMQTT, didPublishAck id: UInt16) {}
-    func mqttDidPing(_ mqtt: CocoaMQTT) {}
-    func mqttDidReceivePong(_ mqtt: CocoaMQTT) {}
-    func mqttDidDisconnect(_ mqtt: CocoaMQTT, withError err: Error?) {
-        DispatchQueue.main.async { self.connected = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            self?.mqtt?.connect()
-        }
+    private func encodeRemainingLength(_ length: Int, into data: inout Data) {
+        var len = length
+        repeat {
+            var digit = UInt8(len % 128)
+            len /= 128
+            if len > 0 { digit |= 0x80 }
+            data.append(digit)
+        } while len > 0
     }
 }

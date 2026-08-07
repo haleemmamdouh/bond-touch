@@ -8,15 +8,14 @@ workflows:
         XCODE_PROJECT: "ios_app/BondTouchiOS.xcodeproj"
         XCODE_SCHEME: "BondTouchiOS"
       xcode: latest
-      cocoapods: default
     scripts:
-      - name: Build iOS App with Swift Package Manager
+      - name: Build Native iOS App
         script: |
           cd ios_app
           xcodebuild \
             -project BondTouchiOS.xcodeproj \
             -scheme BondTouchiOS \
-            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -configuration Release \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
