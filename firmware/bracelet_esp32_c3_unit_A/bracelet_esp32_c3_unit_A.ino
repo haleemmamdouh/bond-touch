@@ -244,14 +244,18 @@ void processIncomingCommand(String input) {
 }
 
 class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer*) {
-    deviceConnected = true; digitalWrite(PIN_LED_BUILTIN, LOW);
+  void onConnect(BLEServer* pServer) {
+    deviceConnected = true; 
+    digitalWrite(PIN_LED_BUILTIN, LOW);
+    // Explicitly stop advertising so NO OTHER PHONE can scan or connect
+    pServer->getAdvertising()->stop();
     playConnectedBlueFlicker();
     delay(200);
     if (pTxCharacteristic) { pTxCharacteristic->setValue("BLE_ON"); pTxCharacteristic->notify(); }
   }
-  void onDisconnect(BLEServer*) {
-    deviceConnected = false; digitalWrite(PIN_LED_BUILTIN, HIGH);
+  void onDisconnect(BLEServer* pServer) {
+    deviceConnected = false; 
+    digitalWrite(PIN_LED_BUILTIN, HIGH);
     playDisconnectedBlueStrobe();
   }
 };

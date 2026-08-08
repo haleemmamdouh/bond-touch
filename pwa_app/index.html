@@ -319,7 +319,7 @@ async function connectBLE() {
   try {
     setLog('🔵 Select your ESP32 device from the list…','');
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [SVC] }, { namePrefix: 'BondTouch' }, { namePrefix: 'ESP32' }],
+      acceptAllDevices: true,
       optionalServices: [SVC]
     });
     bleDevice.addEventListener('gattserverdisconnected', onBLEDisc);
