@@ -316,7 +316,14 @@ function checkNotifBanner() {
 }
 
 // ── SESSION ────────────────────────────────────────────────────────
-function startSession() {
+async function startSession() {
+  if (navigator.bluetooth && navigator.bluetooth.getAvailability) {
+    const available = await navigator.bluetooth.getAvailability();
+    if (!available) {
+      alert('⚠️ Bluetooth is turned OFF or unavailable on your phone!\n\nPlease turn ON Bluetooth in your Android Settings before starting your session.');
+      return;
+    }
+  }
   myName = (document.getElementById('nameInput').value||'').trim();
   const code = (document.getElementById('codeInput').value||'').trim();
   if (!myName || code.length < 4) { alert('Enter your name and a valid pair code.'); return; }
