@@ -17,9 +17,13 @@ workflows:
             -scheme BondTouchiOS \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            BUILD_DIR=build \
             build
+          cd build/Release-iphoneos
+          zip -r BondTouchiOS.app.zip BondTouchiOS.app
     artifacts:
+      - ios_app/build/Release-iphoneos/BondTouchiOS.app.zip
       - ios_app/build/Release-iphoneos/*.app
+      - build/**/*.app
