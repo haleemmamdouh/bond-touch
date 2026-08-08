@@ -289,20 +289,35 @@ void setup() {
 }
 
 void loop() {
+  // Check physical touch sensor (GPIO 4)
   if (digitalRead(PIN_TOUCH) == HIGH) {
     unsigned long now = millis();
     if (now - lastTouchTime > DEBOUNCE_DELAY) {
       lastTouchTime = now;
-      playLocalTouch();
       if (deviceConnected && pTxCharacteristic) {
-        pTxCharacteristic->setValue("TOUCH"); pTxCharacteristic->notify();
+        playLocalTouch();
+        pTxCharacteristic->setValue("TOUCH"); 
+        pTxCharacteristic->notify();
+      } else {
+        // Bluetooth disconnected -> Play 3 sharp RED error flickers + FAIL tone
+        playDeliveryFail();
+        // Followed by 2 blue flickers showing Bluetooth is searching
+        setRGB(0, 0, 255); delay(80);
+        setRGB(0, 0, 0);   delay(80);
+        setRGB(0, 0, 255); delay(80);
+        setRGB(0, 0, 0);
       }
       unsigned long rel = millis();
-      while (digitalRead(PIN_TOUCH) == HIGH && (millis()-rel < 2000)) delay(10);
+      while (digitalRead(PIN_TOUCH) == HIGH && (millis() - rel < 2000)) delay(10);
       delay(200);
     }
   }
-  if (!deviceConnected && oldDeviceConnected) { delay(500); pServer->startAdvertising(); }
+
+  // If disconnected, maintain advertising and status
+  if (!deviceConnected && oldDeviceConnected) { 
+    delay(500); 
+    pServer->startAdvertising(); 
+  }
   oldDeviceConnected = deviceConnected;
   delay(10);
 }

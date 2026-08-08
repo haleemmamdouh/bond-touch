@@ -317,15 +317,45 @@ async function connectBLE() {
   if (!navigator.bluetooth) { alert('Open in Chrome on Android or Desktop for Web Bluetooth.'); return; }
   clearReconn();
   try {
-    setLog('🔵 Scanning for BondTouch ESP32…','');
+    setLog('🔵 Select your ESP32 device from the list…','');
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters:[{namePrefix:'BondTouch'},{services:[SVC]}], optionalServices:[SVC]
+      filters: [{ services: [SVC] }, { namePrefix: 'BondTouch' }, { namePrefix: 'ESP32' }],
+      optionalServices: [SVC]
     });
     bleDevice.addEventListener('gattserverdisconnected', onBLEDisc);
     await doConnect();
   } catch(e) {
-    if (e.name!=='NotFoundError') setLog('⚠️ ' + e.message,'fail');
+    if (e.name !== 'NotFoundError') setLog('⚠️ ' + e.message, 'fail');
   }
+}
+
+async function userDisconnectBLE() {
+  stopReconn();
+  if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+    try { bleDevice.gatt.disconnect(); } catch(_){}
+  }
+  bleConnected = false;
+  rxChar = null;
+  setDot('bleDot', 'warn'); setTxt('bleTxt', 'Off');
+  broadBLE(false);
+  document.getElementById('bleRow').style.display = 'block';
+  document.getElementById('bleRow').innerHTML = '<button class="btn btn-ghost" onclick="connectBLE()">🔵 Pair ESP32 via Bluetooth</button>';
+  setLog('🔴 Disconnected from ESP32 Bluetooth.', 'fail');
+}
+
+async function disconnectBLEAndPickNew() {
+  stopReconn();
+  if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+    try { bleDevice.gatt.disconnect(); } catch(_){}
+  }
+  bleDevice = null;
+  bleConnected = false;
+  rxChar = null;
+  setDot('bleDot', 'warn'); setTxt('bleTxt', 'Off');
+  broadBLE(false);
+  document.getElementById('bleRow').style.display = 'block';
+  document.getElementById('bleRow').innerHTML = '<button class="btn btn-ghost" onclick="connectBLE()">🔵 Pair ESP32 via Bluetooth</button>';
+  connectBLE();
 }
 
 async function doConnect() {
@@ -336,11 +366,21 @@ async function doConnect() {
   const txC     = await service.getCharacteristic(TX);
   await txC.startNotifications();
   txC.addEventListener('characteristicvaluechanged', onESPMsg);
-  bleConnected=true; autoReconn=false; reconnAttempts=0; clearReconn();
-  setDot('bleDot','on'); setTxt('bleTxt','On');
-  document.getElementById('bleRow').style.display='none';
-  document.getElementById('reconnBadge').style.display='none';
-  setLog('🔵 ESP32 connected via Bluetooth! (Foreground Service Active)','ok');
+  bleConnected = true; autoReconn = false; reconnAttempts = 0; clearReconn();
+  setDot('bleDot', 'on'); setTxt('bleTxt', 'On');
+  
+  const devName = bleDevice.name || 'ESP32 Device';
+  document.getElementById('bleRow').style.display = 'block';
+  document.getElementById('bleRow').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:var(--rs);font-size:12px;font-weight:600;color:#93c5fd">
+      <span>🔵 Connected to: <strong>${devName}</strong></span>
+      <div style="display:flex;gap:6px">
+        <button onclick="disconnectBLEAndPickNew()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🔄 Switch</button>
+        <button onclick="userDisconnectBLE()" style="background:rgba(255,51,88,0.2);border:1px solid rgba(255,51,88,0.4);color:#fda4af;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">❌ Disconnect</button>
+      </div>
+    </div>`;
+  document.getElementById('reconnBadge').style.display = 'none';
+  setLog(`🔵 ${devName} connected via Bluetooth!`, 'ok');
   if (navigator.vibrate) navigator.vibrate(200);
   startBackgroundKeepAlive();
   broadBLE(true);
@@ -348,10 +388,12 @@ async function doConnect() {
 
 function onBLEDisc() {
   stopBackgroundKeepAlive();
-  bleConnected=false; rxChar=null;
-  setDot('bleDot','warn'); setTxt('bleTxt','Off');
+  bleConnected = false; rxChar = null;
+  setDot('bleDot', 'warn'); setTxt('bleTxt', 'Off');
   broadBLE(false);
-  setLog('🟡 ESP32 out of range — auto-reconnecting…','fail');
+  document.getElementById('bleRow').style.display = 'block';
+  document.getElementById('bleRow').innerHTML = '<button class="btn btn-ghost" onclick="connectBLE()">🔵 Pair ESP32 via Bluetooth</button>';
+  setLog('🟡 ESP32 out of range — auto-reconnecting…', 'fail');
   schedReconn();
 }
 
