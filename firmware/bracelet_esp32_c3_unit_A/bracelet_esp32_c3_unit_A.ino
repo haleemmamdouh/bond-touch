@@ -24,9 +24,9 @@
 const int PIN_LED_G       = 0;  // GPIO 0 = GREEN
 const int PIN_LED_B       = 1;  // GPIO 1 = BLUE
 const int PIN_LED_R       = 2;  // GPIO 2 = RED
-const int PIN_BUZZER      = 3;  // GPIO 3 = LOUD BUZZER (Transistor Boost)
+const int PIN_BUZZER      = 3;  // GPIO 3 = (Buzzer Removed)
 const int PIN_TOUCH       = 7;  // GPIO 7 = TOUCH SENSOR (TTP223 SIG)
-const int PIN_VIBRATOR    = 21; // GPIO 21 = VIBRATION MOTOR (Transistor Driver)
+const int PIN_VIBRATOR    = 5;  // GPIO 5 = VIBRATION MOTOR (Transistor Driver)
 const int PIN_LED_BUILTIN = 8;
 
 #define DEVICE_BLE_NAME        "BondTouch_ESP32_A"
