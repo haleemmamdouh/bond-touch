@@ -57,17 +57,10 @@ void setVibrator(bool on) {
 }
 
 void makeBuzzerSound(int durationMs, int pitchHz = 1200) {
-  if (pitchHz <= 0) pitchHz = 1200;
-  int periodUs = 1000000 / (pitchHz * 2);
-  unsigned long start = millis();
-  while ((int)(millis() - start) < durationMs) {
-    digitalWrite(PIN_BUZZER, HIGH); delayMicroseconds(periodUs);
-    digitalWrite(PIN_BUZZER, LOW);  delayMicroseconds(periodUs);
-  }
-  digitalWrite(PIN_BUZZER, LOW);
+  // Buzzer removed by user — silent bypass
 }
 
-void noBuzz() { digitalWrite(PIN_BUZZER, LOW); }
+void noBuzz() { }
 
 void fadeRGB(int tR, int tG, int tB, int steps, int stepMs) {
   int sR = curR, sG = curG, sB = curB;
