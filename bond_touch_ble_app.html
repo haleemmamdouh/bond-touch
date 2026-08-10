@@ -524,17 +524,21 @@ function onESPMsg(e) {
   try { s = DEC.decode(e.target.value); } catch(_){}
   if (s.includes('BLE_ON')) { broadBLE(true); return; }
   if (s === 'TOUCH') {
-    // Partner's bracelet was touched — vibrate phone and relay via MQTT
-    if (navigator.vibrate) navigator.vibrate([60, 80, 120]);
-    setLog('💓 Touch received from bracelet!', 'good');
-    // relay to MQTT so partner's phone/bracelet knows
-    if (mqtt_c && mqtt_c.connected && partnerOnline) {
-      const now = Date.now();
+    const now = Date.now();
+    if (partnerOnline && mqtt_c && mqtt_c.connected) {
+      // Delivered to partner! Relay over MQTT & send ACK_OK (green flash) to bracelet
       mqtt_c.publish(topic, JSON.stringify({sender: myName, ts: now}));
+      sendESP('ACK_OK');
+      if (navigator.vibrate) navigator.vibrate(60);
+      setLog('⚡ Touch delivered to partner!', 'good');
+    } else {
+      // Partner not reachable! Send ACK_FAIL (red strobe) to bracelet
+      sendESP('ACK_FAIL');
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+      setLog('🔴 Partner not connected — touch failed.', 'fail');
     }
     return;
   }
-  // Any other message — relay as tap
   if (navigator.vibrate) navigator.vibrate(60);
 }
 

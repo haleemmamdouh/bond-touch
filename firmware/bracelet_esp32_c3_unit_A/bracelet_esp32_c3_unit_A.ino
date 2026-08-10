@@ -10,11 +10,6 @@
   - GPIO 7  --> Touch Sensor TTP223 (SIG/I-O pin)
   - GPIO 5  --> Vibration Motor (via 2N2222 transistor Base through 1kΩ)
   ====================================================================================
-  HOW IT WORKS:
-  - Unit A connects to phone app over BLE
-  - When YOU touch Unit A -> sends "TOUCH" to app -> app relays to Unit B
-  - When OTHER person touches Unit B -> app relays "TOUCH" to Unit A -> vibrates + LED
-  ====================================================================================
 */
 
 #include <BLEDevice.h>
@@ -55,7 +50,6 @@ void rgb(int r, int g, int b) {
   analogWrite(PIN_G, constrain(g, 0, 255));
   analogWrite(PIN_B, constrain(b, 0, 255));
 }
-
 void rgbOff() { rgb(0, 0, 0); }
 
 // ── MOTOR HELPER ──────────────────────────────────────────────────────────────
@@ -97,16 +91,20 @@ void incomingTouch() {
   }
 }
 
-// ── SEND TOUCH PATTERN (outgoing confirm) ─────────────────────────────────────
+// ── OUTGOING TOUCH DELIVERED CONFIRM (Green Flash) ────────────────────────────
 void outgoingConfirm() {
-  // Quick green double flash — touch was sent
-  rgb(0, 255, 0);
-  delay(100);
-  rgbOff();
+  // Quick green double flash — touch successfully reached partner!
+  rgb(0, 255, 0); delay(100); rgbOff();
   delay(60);
-  rgb(0, 255, 0);
-  delay(100);
-  rgbOff();
+  rgb(0, 255, 0); delay(100); rgbOff();
+}
+
+// ── OUTGOING TOUCH FAILED CONFIRM (Red Strobe) ────────────────────────────────
+void failConfirm() {
+  // Quick red triple flash — partner not connected / touch failed!
+  for (int i = 0; i < 3; i++) {
+    rgb(255, 0, 0); delay(120); rgbOff(); delay(80);
+  }
 }
 
 // ── BLE CALLBACKS ─────────────────────────────────────────────────────────────
@@ -117,7 +115,7 @@ class ServerCallbacks : public BLEServerCallbacks {
     for (int i = 0; i < 200; i += 5) { rgb(0, i, 0); delay(4); }
     for (int i = 200; i >= 0; i -= 5) { rgb(0, i, 0); delay(4); }
     rgbOff();
-    vibrate(80); // small buzz — connection confirmed (#11)
+    vibrate(80); // small buzz — connection confirmed
   }
   void onDisconnect(BLEServer* s) override {
     connected = false;
@@ -132,8 +130,14 @@ class RxCallbacks : public BLECharacteristicCallbacks {
     if (val == "TOUCH") {
       incomingTouch();          // partner touched their sensor
     }
+    else if (val == "ACK_OK") {
+      outgoingConfirm();        // touch reached partner -> GREEN flash
+    }
+    else if (val == "ACK_FAIL") {
+      failConfirm();            // touch failed -> RED strobe
+    }
     else if (val == "PARTNER_ON") {
-      partnerConnected();       // partner's bracelet just came online (#3)
+      partnerConnected();       // partner's bracelet came online -> PURPLE flash + buzz
     }
     else if (val.startsWith("RGB:")) {
       int r = 0, g = 0, b = 0;
@@ -163,7 +167,7 @@ void setup() {
   rgbOff();
   digitalWrite(PIN_MOTOR, LOW);
 
-  // Boot blink: RED > GREEN > BLUE
+  // Boot blink: RED → GREEN → BLUE
   rgb(255, 0, 0); delay(200); rgbOff(); delay(80);
   rgb(0, 255, 0); delay(200); rgbOff(); delay(80);
   rgb(0, 0, 255); delay(200); rgbOff();
@@ -175,79 +179,55 @@ void setup() {
 
   BLEService* svc = pServer->createService(SERVICE_UUID);
 
-  // TX Characteristic (ESP32 -> App)
   pTxChar = svc->createCharacteristic(UUID_TX,
     BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
   pTxChar->addDescriptor(new BLE2902());
 
-  // RX Characteristic (App -> ESP32)
   BLECharacteristic* pRxChar = svc->createCharacteristic(UUID_RX,
     BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pRxChar->setCallbacks(new RxCallbacks());
 
   svc->start();
   BLEDevice::startAdvertising();
-  Serial.println("Bracelet A — BLE advertising started");
 
-  // ── WIFI + OTA SETUP ─────────────────────────────────────────────────────
+  // ── WIFI + OTA SETUP ──────────────────────────────────────────────────────
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS, 0, nullptr, true); // true = connect to hidden SSID
-  Serial.print("Connecting to WiFi");
+  WiFi.begin(WIFI_SSID, WIFI_PASS, 0, nullptr, true); // connect to hidden SSID
   unsigned long wifiStart = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 8000) {
     delay(300);
-    Serial.print(".");
   }
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nWiFi connected: " + WiFi.localIP().toString());
     rgb(0, 255, 100); delay(300); rgbOff(); // teal flash = WiFi OK
-  } else {
-    Serial.println("\nWiFi not found — OTA disabled");
   }
 
   ArduinoOTA.setHostname(OTA_HOSTNAME);
-  ArduinoOTA.onStart([]() {
-    // OTA starting — white strobe
-    for (int i = 0; i < 6; i++) { rgb(255,255,255); delay(80); rgbOff(); delay(80); }
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    // Blue fill during upload
-    int pct = progress * 255 / total;
-    rgb(0, 0, pct);
-  });
-  ArduinoOTA.onEnd([]() {
-    rgb(0, 255, 0); delay(500); rgbOff(); // green flash = done
-  });
-  ArduinoOTA.onError([](ota_error_t err) {
-    rgb(255, 0, 0); delay(800); rgbOff(); // red flash = error
-  });
   ArduinoOTA.begin();
-  Serial.println("OTA ready — hostname: " + String(OTA_HOSTNAME));
 }
 
 // ── MAIN LOOP ─────────────────────────────────────────────────────────────────
 void loop() {
-  ArduinoOTA.handle(); // ← always check for wireless update first
+  ArduinoOTA.handle(); // check for wireless update first
 
   if (!connected) {
     idlePulse(); // slow blue pulse when waiting
     return;
   }
 
-  // Read touch sensor
   if (digitalRead(PIN_TOUCH) == HIGH) {
     unsigned long now = millis();
     if (now - lastTouchSent > DEBOUNCE) {
       lastTouchSent = now;
 
-      // Send touch signal to app
-      pTxChar->setValue("TOUCH");
-      pTxChar->notify();
+      if (connected) {
+        // Send touch to app — app checks if partner is online & responds ACK_OK or ACK_FAIL
+        pTxChar->setValue("TOUCH");
+        pTxChar->notify();
+      } else {
+        // Not connected to app — direct failure
+        failConfirm();
+      }
 
-      Serial.println("Touch sent!");
-      outgoingConfirm();
-
-      // Wait for finger to lift
       while (digitalRead(PIN_TOUCH) == HIGH) { delay(10); }
     }
   }

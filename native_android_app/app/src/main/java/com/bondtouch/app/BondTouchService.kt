@@ -43,6 +43,7 @@ class BondTouchService : Service() {
     private var topicName = ""
     private var partnerStatusTopic = ""
     private var lastTapTime = 0L
+    private var partnerOnline = false
 
     inner class LocalBinder : Binder() {
         fun getService(): BondTouchService = this@BondTouchService
@@ -74,7 +75,7 @@ class BondTouchService : Service() {
     }
 
     // ────────────────────────────────────────────────────────────
-    // MQTT BACKGROUND CLIENT (DIRECTIONAL STATUS ROUTING)
+    // MQTT BACKGROUND CLIENT (PRESENCE & TOUCH ACK ROUTING)
     // ────────────────────────────────────────────────────────────
     private fun connectMQTT() {
         try {
@@ -93,6 +94,9 @@ class BondTouchService : Service() {
                     Log.d(TAG, "MQTT Connected")
                     mqttClient?.subscribe(topicName, 0)
                     mqttClient?.subscribe(partnerStatusTopic, 0)
+
+                    // Ask if partner is online right away
+                    requestPartnerStatus()
 
                     if (rxCharacteristic != null) {
                         broadcastBLEStatus(true)
@@ -116,19 +120,29 @@ class BondTouchService : Service() {
                             val sender = json.optString("sender", "")
                             val type = json.optString("type", "")
 
-                            // Ignore my own status broadcasts
+                            // Status query from partner
+                            if (type == "request_status" && !sender.equals(myName, ignoreCase = true)) {
+                                if (rxCharacteristic != null) {
+                                    broadcastBLEStatus(true)
+                                }
+                                return
+                            }
+
+                            // Ignore my own broadcasts
                             if (sender.equals(myName, ignoreCase = true)) return
 
-                            // 🟢 ONLY send purple flash + vibe when partner EXPLICITLY CONNECTS!
+                            // 🟣 Partner came online -> PURPLE flash + buzz on ESP32!
                             if (type == "ble_connect") {
+                                partnerOnline = true
                                 sendToESP("PARTNER_ON")
                                 Log.d(TAG, "Partner $sender connected -> Sent PARTNER_ON to ESP.")
                                 return
                             }
 
-                            // 🔴 When partner disconnects, DO NOT send green light!
+                            // 🔴 Partner disconnected
                             if (type == "ble_disconnect") {
-                                Log.d(TAG, "Partner $sender disconnected -> Doing nothing to ESP LED.")
+                                partnerOnline = false
+                                Log.d(TAG, "Partner $sender disconnected -> Marked offline.")
                                 return
                             }
 
@@ -149,6 +163,20 @@ class BondTouchService : Service() {
             })
         } catch (e: Exception) {
             Log.e(TAG, "MQTT Init Error", e)
+        }
+    }
+
+    private fun requestPartnerStatus() {
+        if (mqttClient != null && mqttClient?.isConnected == true && pairCode.isNotEmpty()) {
+            try {
+                val payload = JSONObject().apply {
+                    put("type", "request_status")
+                    put("sender", myName)
+                }
+                mqttClient?.publish(topicName, MqttMessage(payload.toString().toByteArray()))
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to request partner status", e)
+            }
         }
     }
 
@@ -176,17 +204,22 @@ class BondTouchService : Service() {
         if (now - lastTapTime < 800) return
         lastTapTime = now
 
-        if (mqttClient != null && mqttClient?.isConnected == true && topicName.isNotEmpty()) {
+        if (partnerOnline && mqttClient != null && mqttClient?.isConnected == true && topicName.isNotEmpty()) {
             try {
                 val payload = JSONObject().apply {
                     put("sender", myName)
                     put("timestamp", now)
                 }
                 mqttClient?.publish(topicName, MqttMessage(payload.toString().toByteArray()))
-                Log.d(TAG, "Transmitted physical ESP touch over MQTT!")
+                sendToESP("ACK_OK") // Touch delivered -> GREEN flash!
+                Log.d(TAG, "Touch delivered over MQTT -> Sent ACK_OK (Green) to ESP.")
             } catch (e: Exception) {
+                sendToESP("ACK_FAIL") // Touch failed -> RED strobe!
                 Log.e(TAG, "Failed to send touch over MQTT", e)
             }
+        } else {
+            sendToESP("ACK_FAIL") // Partner offline -> RED strobe!
+            Log.w(TAG, "Partner offline -> Sent ACK_FAIL (Red Strobe) to ESP.")
         }
     }
 
@@ -252,8 +285,9 @@ class BondTouchService : Service() {
                     }
                 }
 
-                // Notify cloud that OUR BLE connected -> Partner ESP turns GREEN!
+                // Notify cloud that OUR BLE connected -> Partner ESP turns PURPLE!
                 broadcastBLEStatus(true)
+                requestPartnerStatus()
             }
         }
 
@@ -266,7 +300,7 @@ class BondTouchService : Service() {
                     broadcastBLEStatus(true)
                     return
                 }
-                // Physical ESP button pressed! Send touch over MQTT to partner!
+                // Physical ESP button pressed!
                 sendTouchOverMQTT()
             }
         }
@@ -328,6 +362,6 @@ class BondTouchService : Service() {
         try {
             mqttClient?.disconnect()
             bluetoothGatt?.close()
-        } catch (e: Exception) {}
+        } catch (_: Exception) {}
     }
 }
