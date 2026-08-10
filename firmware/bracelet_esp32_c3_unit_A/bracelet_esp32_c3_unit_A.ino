@@ -21,6 +21,13 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <WiFi.h>
+#include <ArduinoOTA.h>
+
+// ── WIFI (for wireless OTA updates) ────────────────────────────────
+const char* WIFI_SSID = "H";                  // hidden network
+const char* WIFI_PASS = "1122334455hHh@";
+#define OTA_HOSTNAME "BraceletA"              // shows in Arduino IDE ports
 
 // ── PINS ─────────────────────────────────────────────────────────────────────
 #define PIN_G     0   // RGB Green
@@ -65,9 +72,21 @@ void idlePulse() {
   for (int i = 80; i >= 0; i--) { rgb(0, 0, i * 2); delay(6); }
 }
 
+// ── PARTNER CONNECTED (their bracelet just came online) ───────────────────────
+void partnerConnected() {
+  // Purple triple flash + small vibration pulse
+  for (int i = 0; i < 3; i++) {
+    rgb(160, 0, 255);   // purple
+    delay(140);
+    rgbOff();
+    delay(90);
+  }
+  vibrate(80);          // small confirmation buzz
+}
+
 // ── INCOMING TOUCH PATTERN ────────────────────────────────────────────────────
 void incomingTouch() {
-  // Vibrate in heartbeat pattern + pink/magenta LED
+  // Vibrate in heartbeat pattern + warm pink LED
   for (int p = 0; p < 2; p++) {
     rgb(255, 0, 80);        // warm pink
     vibrate(120);
@@ -80,7 +99,7 @@ void incomingTouch() {
 
 // ── SEND TOUCH PATTERN (outgoing confirm) ─────────────────────────────────────
 void outgoingConfirm() {
-  // Quick green flash to confirm touch was sent
+  // Quick green double flash — touch was sent
   rgb(0, 255, 0);
   delay(100);
   rgbOff();
@@ -94,10 +113,11 @@ void outgoingConfirm() {
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* s) override {
     connected = true;
-    // Slow green breathe on connect
+    // Green breathe animation on connect
     for (int i = 0; i < 200; i += 5) { rgb(0, i, 0); delay(4); }
     for (int i = 200; i >= 0; i -= 5) { rgb(0, i, 0); delay(4); }
     rgbOff();
+    vibrate(80); // small buzz — connection confirmed (#11)
   }
   void onDisconnect(BLEServer* s) override {
     connected = false;
@@ -108,19 +128,20 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 class RxCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* c) override {
-    std::string val = c->getValue();
+    String val = String(c->getValue().c_str());
     if (val == "TOUCH") {
-      incomingTouch();
+      incomingTouch();          // partner touched their sensor
     }
-    // Color commands from app: "RGB:255,0,128"
-    else if (val.rfind("RGB:", 0) == 0) {
+    else if (val == "PARTNER_ON") {
+      partnerConnected();       // partner's bracelet just came online (#3)
+    }
+    else if (val.startsWith("RGB:")) {
       int r = 0, g = 0, b = 0;
       sscanf(val.c_str(), "RGB:%d,%d,%d", &r, &g, &b);
       rgb(r, g, b);
     }
-    // VIB:ms — vibrate custom duration
-    else if (val.rfind("VIB:", 0) == 0) {
-      int ms = atoi(val.c_str() + 4);
+    else if (val.startsWith("VIB:")) {
+      int ms = val.substring(4).toInt();
       vibrate(ms);
     }
     else if (val == "OFF") {
@@ -166,12 +187,48 @@ void setup() {
 
   svc->start();
   BLEDevice::startAdvertising();
-
   Serial.println("Bracelet A — BLE advertising started");
+
+  // ── WIFI + OTA SETUP ─────────────────────────────────────────────────────
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS, 0, nullptr, true); // true = connect to hidden SSID
+  Serial.print("Connecting to WiFi");
+  unsigned long wifiStart = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 8000) {
+    delay(300);
+    Serial.print(".");
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected: " + WiFi.localIP().toString());
+    rgb(0, 255, 100); delay(300); rgbOff(); // teal flash = WiFi OK
+  } else {
+    Serial.println("\nWiFi not found — OTA disabled");
+  }
+
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.onStart([]() {
+    // OTA starting — white strobe
+    for (int i = 0; i < 6; i++) { rgb(255,255,255); delay(80); rgbOff(); delay(80); }
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    // Blue fill during upload
+    int pct = progress * 255 / total;
+    rgb(0, 0, pct);
+  });
+  ArduinoOTA.onEnd([]() {
+    rgb(0, 255, 0); delay(500); rgbOff(); // green flash = done
+  });
+  ArduinoOTA.onError([](ota_error_t err) {
+    rgb(255, 0, 0); delay(800); rgbOff(); // red flash = error
+  });
+  ArduinoOTA.begin();
+  Serial.println("OTA ready — hostname: " + String(OTA_HOSTNAME));
 }
 
 // ── MAIN LOOP ─────────────────────────────────────────────────────────────────
 void loop() {
+  ArduinoOTA.handle(); // ← always check for wireless update first
+
   if (!connected) {
     idlePulse(); // slow blue pulse when waiting
     return;

@@ -1,0 +1,15 @@
+Designator,Val,Package,Mid X,Mid Y,Rotation,Layer
+U1,ESP32-C3-MINI-1-N4,SMD-Module,10.0mm,11.0mm,0,Top
+U2,LP4060S5,SOT-23-5,4.0mm,13.0mm,90,Top
+U3,TTP223N-BA6,SOT-23-6,16.0mm,13.0mm,270,Top
+Q1,MMBT2222A,SOT-23,4.0mm,5.0mm,0,Top
+D1,1N4148WS,SOD-323,4.0mm,2.5mm,180,Top
+LED1,WS2812B-2020,2020_SMD,10.0mm,4.0mm,0,Top
+J1,TYPE-C-16P,TYPE-C-SMD,10.0mm,15.5mm,0,Top
+R1,2.4k,0402,2.0mm,13.0mm,0,Top
+R2,1k,0402,6.0mm,5.0mm,90,Top
+R3,5.1k,0402,8.0mm,15.0mm,0,Top
+R4,5.1k,0402,12.0mm,15.0mm,0,Top
+C1,10uF,0603,2.0mm,15.0mm,90,Top
+C2,10uF,0603,6.0mm,13.0mm,90,Top
+C3,10pF,0402,16.0mm,11.0mm,0,Top

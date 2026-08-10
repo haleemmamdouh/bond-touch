@@ -3,8 +3,10 @@ local
 color bg
 color primary
 color surface
+id btnScanBLE
 id btnStart
 id codeInput
+id deviceListView
 id nameInput
 id statusText
 layout activity_main

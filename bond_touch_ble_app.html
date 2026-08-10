@@ -213,18 +213,18 @@
     <div class="modal-sub">Select your Bond Touch bracelet from the discovered list below to pair:</div>
     
     <div class="dev-list" id="devList">
-      <div class="dev-card" onclick="connectTargetDevice('BondTouch_ESP32_A')">
+      <div class="dev-card" onclick="connectTargetDevice('BraceletA')">
         <div class="dev-info">
-          <div class="dev-name">BondTouch_ESP32_A</div>
-          <div class="dev-meta">Unit A • Single LED Driver • Ready</div>
+          <div class="dev-name">BraceletA</div>
+          <div class="dev-meta">Unit A • RGB + Haptic • Ready to pair</div>
         </div>
         <button class="dev-btn">Connect</button>
       </div>
       
-      <div class="dev-card" onclick="connectTargetDevice('BondTouch_ESP32_B')">
+      <div class="dev-card" onclick="connectTargetDevice('BraceletB')">
         <div class="dev-info">
-          <div class="dev-name">BondTouch_ESP32_B</div>
-          <div class="dev-meta">Unit B • Dual LED Driver • Ready</div>
+          <div class="dev-name">BraceletB</div>
+          <div class="dev-meta">Unit B • RGB + Haptic • Ready to pair</div>
         </div>
         <button class="dev-btn">Connect</button>
       </div>
@@ -363,7 +363,7 @@ function handlePayload(t, p) {
     return;
   }
   if (fromMe) return;
-  if (t===sTopic || p.type==='ble_connect') { updatePartner(true, p.sender); sendESP('PARTNER_BLE_ON'); return; }
+  if (t===sTopic || p.type==='ble_connect') { updatePartner(true, p.sender); sendESP('PARTNER_ON'); return; }
   if (p.type==='ble_disconnect') { updatePartner(false, p.sender); return; }
   if (p.type==='waveform') { recvWave(p.sender, p.data, p.color); return; }
   recvTouch(p.sender);
@@ -391,15 +391,15 @@ async function connectTargetDevice(targetName) {
   closeBLEModal();
   clearReconn();
   try {
-    setLog(`🔵 Connecting to ${targetName}…`, '');
+    setLog(`🔵 Scanning for ${targetName}…`, '');
     bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ name: targetName }, { namePrefix: targetName }, { services: [SVC] }],
+      filters: [{ name: targetName }],
       optionalServices: [SVC]
     });
     bleDevice.addEventListener('gattserverdisconnected', onBLEDisc);
     await doConnect();
   } catch(e) {
-    if (e.name !== 'NotFoundError') setLog('⚠️ ' + e.message, 'fail');
+    if (e.name !== 'NotFoundError') setLog('⚠️ ' + (e.message||'Connection cancelled'), 'fail');
   }
 }
 
@@ -520,15 +520,28 @@ function clearReconn() {
 function stopReconn() { autoReconn=false; if (reconnHandle) { clearTimeout(reconnHandle); reconnHandle=null; } }
 
 function onESPMsg(e) {
-  try { const s=DEC.decode(e.target.value); if(s.includes('BLE_ON')) { broadBLE(true); return; } } catch(_){}
+  let s = '';
+  try { s = DEC.decode(e.target.value); } catch(_){}
+  if (s.includes('BLE_ON')) { broadBLE(true); return; }
+  if (s === 'TOUCH') {
+    // Partner's bracelet was touched — vibrate phone and relay via MQTT
+    if (navigator.vibrate) navigator.vibrate([60, 80, 120]);
+    setLog('💓 Touch received from bracelet!', 'good');
+    // relay to MQTT so partner's phone/bracelet knows
+    if (mqtt_c && mqtt_c.connected && partnerOnline) {
+      const now = Date.now();
+      mqtt_c.publish(topic, JSON.stringify({sender: myName, ts: now}));
+    }
+    return;
+  }
+  // Any other message — relay as tap
   if (navigator.vibrate) navigator.vibrate(60);
-  sendTap();
 }
 
 async function sendESP(str) {
   if (!rxChar) return;
   try {
-    const d = ENC.encode(str.slice(0,512));
+    const d = ENC.encode(str.slice(0, 512));
     if (rxChar.writeValueWithResponse) await rxChar.writeValueWithResponse(d);
     else await rxChar.writeValue(d);
   } catch(_) {}
@@ -536,16 +549,35 @@ async function sendESP(str) {
 
 // ── TOUCH SEND ─────────────────────────────────────────────────────
 function sendTap() {
-  if (!mqtt_c) return;
-  const now=Date.now(); if (now-lastTap<800) return; lastTap=now;
-  if (!partnerOnline) { failSend(); return; }
+  const now = Date.now();
+  if (now - lastTap < 800) return;
+  lastTap = now;
   if (navigator.vibrate) navigator.vibrate(50);
+
+  if (!bleConnected) {
+    setLog('⚠️ Connect your bracelet via Bluetooth first.', 'fail');
+    return;
+  }
+
+  if (!partnerOnline) {
+    // Red strobe on local bracelet to signal touch failed to reach partner (#6)
+    sendESP('RGB:255,0,0');
+    setTimeout(() => { sendESP('RGB:0,0,0'); }, 150);
+    setTimeout(() => { sendESP('RGB:255,0,0'); }, 300);
+    setTimeout(() => { sendESP('RGB:0,0,0'); }, 450);
+    setTimeout(() => { sendESP('RGB:255,0,0'); }, 600);
+    setTimeout(() => { sendESP('OFF'); }, 750);
+    setLog('🔴 Partner not connected — touch failed to reach partner.', 'fail');
+    return;
+  }
+
+  // Send to PARTNER's bracelet via MQTT
   if (savedWave) {
-    mqtt_c.publish(topic, JSON.stringify({type:'waveform',data:savedWave.join(','),color:`${activeR},${activeG},${activeB}`,duration:3,sender:myName,ts:now}));
-    setLog('⚡ Sent "' + savedName + '" to partner!','ok');
+    mqtt_c.publish(topic, JSON.stringify({type:'waveform', data: savedWave.join(','), color:`${activeR},${activeG},${activeB}`, duration:3, sender:myName, ts:now}));
+    setLog('⚡ Sent "' + savedName + '" to partner!', 'ok');
   } else {
-    mqtt_c.publish(topic, JSON.stringify({sender:myName,ts:now}));
-    setLog('⚡ Touch sent to partner!','ok');
+    mqtt_c.publish(topic, JSON.stringify({sender: myName, ts: now}));
+    setLog('⚡ Touch sent to partner!', 'ok');
   }
 }
 

@@ -1,0 +1,56 @@
+{
+  "docType": "schematic",
+  "version": "3.0",
+  "title": "Haptic_Bracelet_v1",
+  "sheet": {
+    "width": 1169,
+    "height": 827
+  },
+  "components": [
+    {
+      "id": "U1",
+      "name": "ESP32-C3-MINI-1-N4",
+      "lcsc": "C2934568",
+      "x": 400,
+      "y": 300,
+      "pins": {
+        "3V3": [450, 270],
+        "GND": [450, 350],
+        "GPIO0": [350, 270],
+        "GPIO1": [350, 280],
+        "GPIO2": [350, 290],
+        "GPIO3": [350, 300],
+        "GPIO7": [350, 310],
+        "GPIO21": [350, 320]
+      }
+    },
+    {
+      "id": "U2",
+      "name": "LP4060S5 Charger IC",
+      "lcsc": "C142584",
+      "x": 150,
+      "y": 200
+    },
+    {
+      "id": "U3",
+      "name": "TTP223N-BA6 Touch IC",
+      "lcsc": "C129994",
+      "x": 650,
+      "y": 200
+    },
+    {
+      "id": "Q1",
+      "name": "MMBT2222A Transistor",
+      "lcsc": "C2132",
+      "x": 650,
+      "y": 400
+    },
+    {
+      "id": "LED1",
+      "name": "WS2812B-2020 RGB LED",
+      "lcsc": "C2843785",
+      "x": 250,
+      "y": 400
+    }
+  ]
+}

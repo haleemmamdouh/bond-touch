@@ -3078,6 +3078,7 @@ id beginning
 id blocking
 id bottom
 id bounce
+id btnScanBLE
 id btnStart
 id buttonPanel
 id cancel_button
@@ -3122,6 +3123,7 @@ id design_menu_item_action_area
 id design_menu_item_action_area_stub
 id design_menu_item_text
 id design_navigation_view
+id deviceListView
 id dialog_button
 id dimensions
 id direct

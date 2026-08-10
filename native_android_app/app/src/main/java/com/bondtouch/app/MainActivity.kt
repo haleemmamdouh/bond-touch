@@ -101,10 +101,10 @@ class MainActivity : AppCompatActivity() {
         discoveredAddresses.clear()
 
         // Populate default units for instant user choice
-        discoveredDevices.add("BondTouch_ESP32_A (Unit A)")
+        discoveredDevices.add("BraceletA (Unit A)")
         discoveredAddresses.add("A_DEFAULT")
 
-        discoveredDevices.add("BondTouch_ESP32_B (Unit B)")
+        discoveredDevices.add("BraceletB (Unit B)")
         discoveredAddresses.add("B_DEFAULT")
 
         listAdapter.notifyDataSetChanged()

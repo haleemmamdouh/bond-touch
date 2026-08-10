@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="#0a0a0f"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="20dp"
     android:gravity="center_horizontal">
 
     <TextView
@@ -12,9 +12,9 @@
         android:layout_height="wrap_content"
         android:text="Bond Touch Native"
         android:textColor="#ff3358"
-        android:textSize="26sp"
+        android:textSize="24sp"
         android:textStyle="bold"
-        android:layout_marginTop="20dp" />
+        android:layout_marginTop="10dp" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -22,7 +22,7 @@
         android:text="24/7 Persistent Kernel BLE Service"
         android:textColor="#8a8a9a"
         android:textSize="12sp"
-        android:layout_marginBottom="32dp" />
+        android:layout_marginBottom="16dp" />
 
     <EditText
         android:id="@+id/nameInput"
@@ -32,8 +32,8 @@
         android:hint="Your Name (e.g. Ahmed)"
         android:textColorHint="#4a4a5a"
         android:textColor="#ffffff"
-        android:padding="16dp"
-        android:layout_marginBottom="12dp" />
+        android:padding="14dp"
+        android:layout_marginBottom="10dp" />
 
     <EditText
         android:id="@+id/codeInput"
@@ -44,8 +44,37 @@
         android:textColorHint="#4a4a5a"
         android:textColor="#ffffff"
         android:inputType="number"
-        android:padding="16dp"
-        android:layout_marginBottom="24dp" />
+        android:padding="14dp"
+        android:layout_marginBottom="14dp" />
+
+    <Button
+        android:id="@+id/btnScanBLE"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔍 Discover Nearby ESP32 Devices"
+        android:backgroundTint="#18181f"
+        android:textColor="#3b82f6"
+        android:padding="12dp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select Device to Connect:"
+        android:textColor="#8a8a9a"
+        android:textSize="11sp"
+        android:layout_gravity="start"
+        android:layout_marginBottom="6dp" />
+
+    <ListView
+        android:id="@+id/deviceListView"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:background="#111118"
+        android:divider="#18181f"
+        android:dividerHeight="1dp"
+        android:layout_marginBottom="14dp" />
 
     <Button
         android:id="@+id/btnStart"
@@ -61,12 +90,12 @@
         android:id="@+id/statusText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="14dp"
         android:background="#111118"
-        android:padding="16dp"
+        android:padding="14dp"
         android:text="Status: Waiting to start..."
         android:textColor="#22c55e"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:gravity="center" />
 
 </LinearLayout>

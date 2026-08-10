@@ -1,0 +1,104 @@
+{
+  "head": {
+    "docType": "5",
+    "editorVersion": "6.5.22",
+    "newVersion": "1.0",
+    "title": "Haptic_Bracelet_v1_20x16mm",
+    "hasIdFlag": true
+  },
+  "canvas": "CA~1000~1000~#000000~1~mm~1~0.1~#FFFFFF~0.5~#1C1C1C~20~16~line~1~1000~1000~0~0",
+  "shape": [
+    "TRACK~1~1~#000000~0~0~20~0~#100~0",
+    "TRACK~1~1~#000000~20~0~20~16~#100~0",
+    "TRACK~1~1~#000000~20~16~0~16~#100~0",
+    "TRACK~1~1~#000000~0~16~0~0~#100~0"
+  ],
+  "layers": [
+    "1~TopLayer~#FF0000~true~false~true",
+    "2~BottomLayer~#0000FF~true~false~true",
+    "3~TopSilkLayer~#FFFF00~true~false~true",
+    "4~BottomSilkLayer~#00FFFF~true~false~true",
+    "10~BoardOutline~#FF00FF~true~false~true"
+  ],
+  "components": [
+    {
+      "designator": "U1",
+      "name": "ESP32-C3-MINI-1-N4",
+      "package": "SMD-Module",
+      "lcsc": "C2934568",
+      "x": 10.0,
+      "y": 11.0,
+      "rotation": 0,
+      "layer": "Top"
+    },
+    {
+      "designator": "U2",
+      "name": "LP4060S5",
+      "package": "SOT-23-5",
+      "lcsc": "C142584",
+      "x": 4.0,
+      "y": 13.0,
+      "rotation": 90,
+      "layer": "Top"
+    },
+    {
+      "designator": "U3",
+      "name": "TTP223N-BA6",
+      "package": "SOT-23-6",
+      "lcsc": "C129994",
+      "x": 16.0,
+      "y": 13.0,
+      "rotation": 270,
+      "layer": "Top"
+    },
+    {
+      "designator": "Q1",
+      "name": "MMBT2222A",
+      "package": "SOT-23",
+      "lcsc": "C2132",
+      "x": 4.0,
+      "y": 5.0,
+      "rotation": 0,
+      "layer": "Top"
+    },
+    {
+      "designator": "D1",
+      "name": "1N4148WS",
+      "package": "SOD-323",
+      "lcsc": "C81598",
+      "x": 4.0,
+      "y": 2.5,
+      "rotation": 180,
+      "layer": "Top"
+    },
+    {
+      "designator": "LED1",
+      "name": "WS2812B-2020",
+      "package": "2020_SMD",
+      "lcsc": "C2843785",
+      "x": 10.0,
+      "y": 4.0,
+      "rotation": 0,
+      "layer": "Top"
+    },
+    {
+      "designator": "J1",
+      "name": "TYPE-C-16P",
+      "package": "TYPE-C-SMD",
+      "lcsc": "C165948",
+      "x": 10.0,
+      "y": 15.5,
+      "rotation": 0,
+      "layer": "Top"
+    }
+  ],
+  "nets": [
+    "GND",
+    "3V3",
+    "VBUS",
+    "BAT_POS",
+    "TOUCH_SIG",
+    "MOTOR_PWM",
+    "LED_DATA"
+  ]
+}

@@ -119,10 +119,10 @@ class BondTouchService : Service() {
                             // Ignore my own status broadcasts
                             if (sender.equals(myName, ignoreCase = true)) return
 
-                            // 🟢 ONLY send GREEN flash when partner EXPLICITLY CONNECTS!
+                            // 🟢 ONLY send purple flash + vibe when partner EXPLICITLY CONNECTS!
                             if (type == "ble_connect") {
-                                sendToESP("PARTNER_BLE_ON")
-                                Log.d(TAG, "Partner $sender connected -> Sent PARTNER_BLE_ON (Green) to ESP.")
+                                sendToESP("PARTNER_ON")
+                                Log.d(TAG, "Partner $sender connected -> Sent PARTNER_ON to ESP.")
                                 return
                             }
 
