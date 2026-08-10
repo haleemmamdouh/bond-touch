@@ -1,15 +1,18 @@
 package com.bondtouch.app
 
+import android.Manifest
 import android.app.*
 import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
@@ -40,6 +43,7 @@ class BondTouchService : Service() {
 
     private var myName = ""
     private var pairCode = ""
+    private var targetMac = ""
     private var topicName = ""
     private var partnerStatusTopic = ""
     private var lastTapTime = 0L
@@ -62,6 +66,7 @@ class BondTouchService : Service() {
         intent?.let {
             myName = it.getStringExtra("NAME") ?: ""
             pairCode = it.getStringExtra("CODE") ?: ""
+            targetMac = it.getStringExtra("TARGET_MAC") ?: ""
             if (myName.isNotEmpty() && pairCode.isNotEmpty()) {
                 topicName = "bondtouch/pair_$pairCode"
                 partnerStatusTopic = "bondtouch/status_$pairCode/+"
@@ -227,19 +232,34 @@ class BondTouchService : Service() {
     // NATIVE BLUETOOTH LE AUTO-CONNECT LOOP & NOTIFICATIONS
     // ────────────────────────────────────────────────────────────
     private fun scanAndConnectBLE() {
+        if (targetMac.isNotEmpty() && BluetoothAdapter.checkBluetoothAddress(targetMac)) {
+            try {
+                val device = bluetoothAdapter?.getRemoteDevice(targetMac)
+                if (device != null) {
+                    Log.d(TAG, "Connecting directly to selected target MAC: $targetMac")
+                    connectToGatt(device)
+                    return
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed direct MAC connect, falling back to scan", e)
+            }
+        }
+
         val scanner = bluetoothAdapter?.bluetoothLeScanner ?: return
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(SVC_UUID))
-            .build()
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
-        scanner.startScan(listOf(filter), settings, object : ScanCallback() {
+        scanner.startScan(null, settings, object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
                 result?.device?.let { device ->
-                    scanner.stopScan(this)
-                    connectToGatt(device)
+                    val devName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(this@BondTouchService, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) "" else device.name ?: ""
+                    if (devName == "BraceletA" || devName == "BraceletB" || devName.startsWith("BondTouch")) {
+                        try {
+                            scanner.stopScan(this)
+                        } catch (_: Exception) {}
+                        connectToGatt(device)
+                    }
                 }
             }
         })

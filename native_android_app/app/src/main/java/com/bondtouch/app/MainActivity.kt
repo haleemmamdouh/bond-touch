@@ -3,13 +3,16 @@ package com.bondtouch.app
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.*
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -28,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val discoveredAddresses = mutableListOf<String>()
     private lateinit var listAdapter: ArrayAdapter<String>
     private var selectedDeviceAddress: String? = null
+    private var isScanning = false
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 101
@@ -53,16 +57,18 @@ class MainActivity : AppCompatActivity() {
         deviceListView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
         deviceListView.setOnItemClickListener { _, _, position, _ ->
-            selectedDeviceAddress = discoveredAddresses[position]
-            val devName = discoveredDevices[position]
-            Toast.makeText(this, "Selected: $devName", Toast.LENGTH_SHORT).show()
+            if (position < discoveredAddresses.size) {
+                selectedDeviceAddress = discoveredAddresses[position]
+                val devName = discoveredDevices[position]
+                Toast.makeText(this, "Selected: $devName", Toast.LENGTH_SHORT).show()
+            }
         }
 
         checkAndRequestPermissions()
 
         btnScanBLE.setOnClickListener {
             if (!ensureBluetoothOn()) return@setOnClickListener
-            startDeviceScan()
+            startRealDeviceScan()
         }
 
         btnStart.setOnClickListener {
@@ -96,19 +102,70 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun startDeviceScan() {
+    private fun startRealDeviceScan() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                checkAndRequestPermissions()
+                return
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                checkAndRequestPermissions()
+                return
+            }
+        }
+
+        val scanner = bluetoothAdapter?.bluetoothLeScanner
+        if (scanner == null) {
+            Toast.makeText(this, "Bluetooth Scanner unavailable!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         discoveredDevices.clear()
         discoveredAddresses.clear()
-
-        // Populate default units for instant user choice
-        discoveredDevices.add("BraceletA (Unit A)")
-        discoveredAddresses.add("A_DEFAULT")
-
-        discoveredDevices.add("BraceletB (Unit B)")
-        discoveredAddresses.add("B_DEFAULT")
-
         listAdapter.notifyDataSetChanged()
-        Toast.makeText(this, "Discovered nearby Bond Touch ESP32 units! Tap one to select.", Toast.LENGTH_LONG).show()
+
+        isScanning = true
+        btnScanBLE.text = "🔍 Scanning nearby..."
+        Toast.makeText(this, "Scanning nearby Bluetooth devices...", Toast.LENGTH_SHORT).show()
+
+        val scanCallback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                result?.device?.let { device ->
+                    val addr = device.address
+                    val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        addr
+                    } else {
+                        device.name ?: "Unknown Device"
+                    }
+
+                    if (!discoveredAddresses.contains(addr)) {
+                        discoveredDevices.add("$name ($addr)")
+                        discoveredAddresses.add(addr)
+                        listAdapter.notifyDataSetChanged()
+                    }
+                }
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                isScanning = false
+                btnScanBLE.text = "🔵 Scan BLE Devices"
+                Toast.makeText(this@MainActivity, "Scan failed with error: $errorCode", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        scanner.startScan(scanCallback)
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (isScanning) {
+                isScanning = false
+                btnScanBLE.text = "🔵 Scan BLE Devices"
+                try {
+                    scanner.stopScan(scanCallback)
+                } catch (_: Exception) {}
+                Toast.makeText(this@MainActivity, "Scan finished: Found ${discoveredDevices.size} devices", Toast.LENGTH_SHORT).show()
+            }
+        }, 8000)
     }
 
     private fun startBondTouchService(name: String, code: String, targetMac: String?) {
@@ -124,7 +181,7 @@ class MainActivity : AppCompatActivity() {
             startService(serviceIntent)
         }
 
-        statusText.text = "🟢 Foreground Service Active 24/7!\nPaired to: ${selectedDeviceAddress ?: "Auto-Select"}"
+        statusText.text = "🟢 Foreground Service Active 24/7!\nSelected: ${selectedDeviceAddress ?: "Auto-Scan Nearby"}"
         Toast.makeText(this, "Service started 24/7 in background!", Toast.LENGTH_LONG).show()
     }
 
