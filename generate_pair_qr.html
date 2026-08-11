@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bond Touch — Retail Pair QR Card Generator</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Security Crypto -->
+  <script src="security_crypto.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #080B10;
+      color: #F1F5F9;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #FF4B72, #FF85A1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: #94A3B8;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #FF4B72 0%, #FF2A55 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255, 75, 114, 0.4);
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(255, 75, 114, 0.6);
+    }
+
+    /* Retail Pair Card Box */
+    .card-container {
+      background: rgba(18, 24, 38, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      padding: 30px;
+      width: 100%;
+      max-width: 720px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      margin-top: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 24px;
+    }
+
+    .pair-badge {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 75, 114, 0.15);
+      border: 1px solid rgba(255, 75, 114, 0.4);
+      color: #FF4B72;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .qr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .qr-box {
+      background: rgba(10, 14, 23, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .qr-box h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #F8FAFC;
+      margin-bottom: 4px;
+    }
+
+    .qr-box p {
+      font-size: 12px;
+      color: #64748B;
+      margin-bottom: 16px;
+    }
+
+    .qr-canvas-wrapper {
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+      margin-bottom: 16px;
+    }
+
+    .meta-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #475569;
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px;
+      border-radius: 8px;
+      width: 100%;
+    }
+
+    .action-row {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #F1F5F9;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>BOND TOUCH RETAIL PAIR CARD</h1>
+    <p>Generate 1-Scan Encryption Cards for Unboxing & Automatic Pairing</p>
+  </header>
+
+  <button class="btn" id="btn-generate">✨ Generate New Retail Pair Card</button>
+
+  <div class="card-container" id="card-container" style="display: none;">
+    <div class="card-header">
+      <div>
+        <h2 style="font-size: 18px; font-weight: 700;">OFFICIAL COUPLE PAIR CARD</h2>
+        <span style="font-size: 12px; color: #64748B;">Scan inside Bond Touch App to Connect</span>
+      </div>
+      <div class="pair-badge" id="pair-id-tag">PAIR_984F2A</div>
+    </div>
+
+    <div class="qr-grid">
+      <!-- Unit A QR -->
+      <div class="qr-box">
+        <h3>BRACELET A (USER)</h3>
+        <p>Scan with Phone A to link Bracelet A</p>
+        <div class="qr-canvas-wrapper" id="qr-a"></div>
+        <div class="meta-key" id="key-a-tag">KEY: Loading...</div>
+      </div>
+
+      <!-- Unit B QR -->
+      <div class="qr-box">
+        <h3>BRACELET B (PARTNER)</h3>
+        <p>Scan with Phone B to link Bracelet B</p>
+        <div class="qr-canvas-wrapper" id="qr-b"></div>
+        <div class="meta-key" id="key-b-tag">KEY: Loading...</div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Retail Card</button>
+      <button class="btn" id="btn-open-app">🚀 Launch Web App with Pair Code</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPairId = "";
+    let currentKeyHex = "";
+
+    document.getElementById('btn-generate').addEventListener('click', async () => {
+      // 1. Generate random 6-character Pair ID
+      const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
+      currentPairId = `PAIR_${randomHex}`;
+
+      // 2. Generate 256-bit AES-256 E2EE key
+      currentKeyHex = await BondTouchCrypto.generatePairKeyHex();
+
+      // 3. Update UI tags
+      document.getElementById('pair-id-tag').innerText = currentPairId;
+      document.getElementById('key-a-tag').innerText = `AES-256: ${currentKeyHex.substring(0, 16)}...`;
+      document.getElementById('key-b-tag').innerText = `AES-256: ${currentKeyHex.substring(0, 16)}...`;
+
+      // 4. Generate QR Codes
+      const urlA = `bondtouch://pair?code=${currentPairId}&key=${currentKeyHex}&unit=BraceletA`;
+      const urlB = `bondtouch://pair?code=${currentPairId}&key=${currentKeyHex}&unit=BraceletB`;
+
+      document.getElementById('qr-a').innerHTML = '';
+      document.getElementById('qr-b').innerHTML = '';
+
+      new QRCode(document.getElementById('qr-a'), {
+        text: urlA,
+        width: 140,
+        height: 140,
+        colorDark : "#080B10",
+        colorLight : "#ffffff"
+      });
+
+      new QRCode(document.getElementById('qr-b'), {
+        text: urlB,
+        width: 140,
+        height: 140,
+        colorDark : "#080B10",
+        colorLight : "#ffffff"
+      });
+
+      document.getElementById('card-container').style.display = 'block';
+    });
+
+    document.getElementById('btn-open-app').addEventListener('click', () => {
+      if (!currentPairId) return;
+      const targetUrl = `bond_touch_production_app.html?code=${currentPairId}&key=${currentKeyHex}&unit=BraceletA`;
+      window.open(targetUrl, '_blank');
+    });
+
+    // Auto-generate on load
+    window.addEventListener('load', () => {
+      document.getElementById('btn-generate').click();
+    });
+  </script>
+</body>
+</html>

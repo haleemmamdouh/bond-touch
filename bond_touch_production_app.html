@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bond Touch — Commercial Production App</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Security Crypto Engine -->
+  <script src="security_crypto.js"></script>
+  <!-- MQTT JS Library -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #080C14;
+      color: #F8FAFC;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    /* Mobile Container Mockup */
+    .app-frame {
+      width: 100%;
+      max-width: 420px;
+      height: 840px;
+      background: #0E1422;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 36px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 75, 114, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Header */
+    .header {
+      padding: 24px 24px 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #FF4B72, #FF85A1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .security-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #2ED573;
+      background: rgba(46, 213, 115, 0.12);
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .security-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2ED573;
+      box-shadow: 0 0 8px #2ED573;
+    }
+
+    /* Partner Status Card */
+    .partner-card {
+      margin: 20px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+    }
+
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF4B72 0%, #7C5CBF 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      color: white;
+      box-shadow: 0 0 20px rgba(255, 75, 114, 0.3);
+    }
+
+    .status-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #64748B;
+      border: 2px solid #0E1422;
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.online {
+      background: #2ED573;
+      box-shadow: 0 0 10px #2ED573;
+    }
+
+    .partner-info h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #F8FAFC;
+    }
+
+    .partner-info p {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }
+
+    /* Main Touch Sphere */
+    .touch-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .pulse-ring {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,75,114,0.15) 0%, rgba(255,75,114,0) 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pulse-ring:active {
+      transform: scale(0.94);
+    }
+
+    .touch-heart {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF4B72 0%, #FF2A55 100%);
+      box-shadow: 0 0 40px rgba(255, 75, 114, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .touch-heart svg {
+      width: 56px;
+      height: 56px;
+      fill: white;
+    }
+
+    .touch-hint {
+      margin-top: 24px;
+      font-size: 14px;
+      color: #64748B;
+      font-weight: 500;
+    }
+
+    /* Hardware BLE Connection Bar */
+    .ble-bar {
+      margin: 0 20px 20px 20px;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ble-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .btn-ble {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-ble:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Pairing Modal Overlay */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 12, 20, 0.95);
+      backdrop-filter: blur(16px);
+      z-index: 100;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: #94A3B8;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .btn-full {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #FF4B72 0%, #FF2A55 100%);
+      color: white;
+      border: none;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255, 75, 114, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-frame">
+    
+    <!-- Header -->
+    <div class="header">
+      <div class="brand-title">BOND TOUCH</div>
+      <div class="security-badge">
+        <div class="security-dot"></div>
+        <span>AES-256 E2EE</span>
+      </div>
+    </div>
+
+    <!-- Partner Card -->
+    <div class="partner-card">
+      <div class="avatar-wrapper">
+        <div class="avatar" id="partner-initial">P</div>
+        <div class="status-dot" id="partner-status-dot"></div>
+      </div>
+      <div class="partner-info">
+        <h3 id="partner-name">Partner</h3>
+        <p id="partner-status-text">Checking presence...</p>
+      </div>
+    </div>
+
+    <!-- Touch Area -->
+    <div class="touch-area">
+      <div class="pulse-ring" id="btn-touch-send">
+        <div class="touch-heart">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="touch-hint" id="touch-hint-text">Tap heart to send touch</div>
+    </div>
+
+    <!-- BLE Hardware Link Bar -->
+    <div class="ble-bar">
+      <div class="ble-info">
+        <span style="font-size: 18px;" id="ble-icon">⌚</span>
+        <div>
+          <div id="ble-name-tag" style="color: #F8FAFC;">Disconnected</div>
+          <div id="ble-status-sub" style="font-size: 11px; color: #64748B;">Bluetooth LE</div>
+        </div>
+      </div>
+      <button class="btn-ble" id="btn-connect-ble">Connect</button>
+    </div>
+
+    <!-- Pairing Modal -->
+    <div class="modal-overlay" id="pairing-modal" style="display: none;">
+      <div class="modal-title">SETUP YOUR COUPLE PAIR</div>
+      <div class="modal-desc">Enter your 1-Scan Pair Code & 256-bit Key from your unboxing retail card.</div>
+
+      <input type="text" class="input-field" id="input-pair-code" placeholder="Pair Code (e.g. PAIR_984F2A)">
+      <input type="text" class="input-field" id="input-pair-key" placeholder="256-bit AES Key (Hex)">
+      
+      <button class="btn-full" id="btn-save-pairing">🔒 Connect Encrypted Pair</button>
+    </div>
+
+  </div>
+
+  <script>
+    // ── BLE UUID CONFIG ────────────────────────────────────────────────────────
+    const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+    const UUID_TX      = "a3c87500-8ed3-4bdf-8a39-a01bebede295"; // ESP32 -> App
+    const UUID_RX      = "beb5483e-36e1-4688-b7f5-ea07361b26a8"; // App -> ESP32
+
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    let pairCode = "";
+    let pairKeyHex = "";
+    let localUnit = "BraceletA";
+    let targetUnit = "BraceletB";
+    let partnerOnline = false;
+
+    let bleDevice = null;
+    let bleRxChar = null;
+    let seqCounter = 0;
+    let mqttClient = null;
+
+    // ── PARSE URL DEEP LINK ──────────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('code') && urlParams.has('key')) {
+      pairCode = urlParams.get('code');
+      pairKeyHex = urlParams.get('key');
+      localUnit = urlParams.get('unit') || "BraceletA";
+      targetUnit = localUnit === "BraceletA" ? "BraceletB" : "BraceletA";
+      savePairConfig();
+    } else {
+      loadPairConfig();
+    }
+
+    function savePairConfig() {
+      localStorage.setItem('bond_pair_code', pairCode);
+      localStorage.setItem('bond_pair_key', pairKeyHex);
+      localStorage.setItem('bond_local_unit', localUnit);
+    }
+
+    function loadPairConfig() {
+      pairCode = localStorage.getItem('bond_pair_code') || "";
+      pairKeyHex = localStorage.getItem('bond_pair_key') || "";
+      localUnit = localStorage.getItem('bond_local_unit') || "BraceletA";
+      targetUnit = localUnit === "BraceletA" ? "BraceletB" : "BraceletA";
+
+      if (!pairCode || !pairKeyHex) {
+        document.getElementById('pairing-modal').style.display = 'flex';
+      }
+    }
+
+    document.getElementById('btn-save-pairing').addEventListener('click', () => {
+      pairCode = document.getElementById('input-pair-code').value.trim();
+      pairKeyHex = document.getElementById('input-pair-key').value.trim();
+      if (pairCode && pairKeyHex) {
+        savePairConfig();
+        document.getElementById('pairing-modal').style.display = 'none';
+        initMQTT();
+      }
+    });
+
+    // ── MQTT REALTIME PRODUCTION CLOUD ─────────────────────────────────────────
+    function initMQTT() {
+      if (!pairCode) return;
+
+      const brokerUrl = "wss://broker.emqx.io:8084/mqtt";
+      mqttClient = mqtt.connect(brokerUrl);
+
+      mqttClient.on('connect', () => {
+        console.log('Connected to Production Cloud');
+
+        // Subscribe to encrypted touch channel & presence channel
+        const topicTouch = `bondtouch_e2ee/${pairCode}/${localUnit}`;
+        const topicPresence = `bondtouch_presence/${pairCode}/#`;
+        
+        mqttClient.subscribe([topicTouch, topicPresence]);
+
+        // Publish live presence heartbeat
+        setInterval(() => {
+          mqttClient.publish(`bondtouch_presence/${pairCode}/${localUnit}`, "ONLINE");
+        }, 3000);
+      });
+
+      mqttClient.on('message', async (topic, message) => {
+        if (topic.includes('bondtouch_presence')) {
+          if (topic.includes(targetUnit)) {
+            partnerOnline = (message.toString() === "ONLINE");
+            updatePartnerPresenceUI();
+          }
+        } else if (topic.includes('bondtouch_e2ee')) {
+          // Encrypted payload received from partner!
+          try {
+            const encryptedPacket = JSON.parse(message.toString());
+            const decryptedPayload = await BondTouchCrypto.decryptPayload(encryptedPacket, pairKeyHex, seqCounter);
+            
+            console.log('Decrypted Partner Payload:', decryptedPayload);
+            seqCounter = decryptedPayload.seq;
+
+            // Trigger Bluetooth LE write to local bracelet (Pink Flash + Vibration)
+            if (bleRxChar) {
+              const encoder = new TextEncoder();
+              await bleRxChar.writeValue(encoder.encode("TOUCH"));
+            }
+
+            // Return ACK_OK to sender
+            mqttClient.publish(`bondtouch_ack/${pairCode}/${targetUnit}`, "ACK_OK");
+          } catch (err) {
+            console.error('Decryption / Signature Error:', err);
+          }
+        }
+      });
+    }
+
+    function updatePartnerPresenceUI() {
+      const dot = document.getElementById('partner-status-dot');
+      const text = document.getElementById('partner-status-text');
+
+      if (partnerOnline) {
+        dot.classList.add('online');
+        text.innerText = "Connected & Active";
+        text.style.color = "#2ED573";
+      } else {
+        dot.classList.remove('online');
+        text.innerText = "Offline";
+        text.style.color = "#94A3B8";
+      }
+    }
+
+    // ── BLUETOOTH LE HANDLER ──────────────────────────────────────────────────
+    document.getElementById('btn-connect-ble').addEventListener('click', async () => {
+      try {
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ name: localUnit }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+
+        bleRxChar = await service.getCharacteristic(UUID_RX);
+        const txChar = await service.getCharacteristic(UUID_TX);
+
+        await txChar.startNotifications();
+        txChar.addEventListener('characteristicvaluechanged', handleLocalBraceletTouch);
+
+        document.getElementById('ble-name-tag').innerText = localUnit;
+        document.getElementById('ble-status-sub').innerText = "Connected via BLE";
+        document.getElementById('ble-status-sub').style.color = "#2ED573";
+        document.getElementById('btn-connect-ble').innerText = "Connected";
+
+      } catch (err) {
+        console.error("BLE Connect Error:", err);
+      }
+    });
+
+    // Handle local sensor press from ESP32 -> App
+    async function handleLocalBraceletTouch(event) {
+      const valueStr = new TextDecoder().decode(event.target.value);
+      if (valueStr === "TOUCH") {
+        sendEncryptedTouchToPartner();
+      }
+    }
+
+    // Manual Touch Button
+    document.getElementById('btn-touch-send').addEventListener('click', () => {
+      sendEncryptedTouchToPartner();
+    });
+
+    // ── SEND ENCRYPTED TOUCH TO PARTNER ───────────────────────────────────────
+    async function sendEncryptedTouchToPartner() {
+      if (!pairCode || !pairKeyHex) return;
+
+      if (!partnerOnline) {
+        // Partner offline -> Send ACK_FAIL (Fading Red) to local bracelet
+        if (bleRxChar) {
+          const encoder = new TextEncoder();
+          await bleRxChar.writeValue(encoder.encode("ACK_FAIL"));
+        }
+        document.getElementById('touch-hint-text').innerText = "Partner is offline (Fading Red)";
+        document.getElementById('touch-hint-text').style.color = "#FF4757";
+        return;
+      }
+
+      // Partner is online -> Encrypt payload with AES-256-CBC
+      seqCounter++;
+      const payload = {
+        type: "TOUCH",
+        timestamp: Date.now(),
+        seq: seqCounter,
+        sender: localUnit
+      };
+
+      const encryptedPacket = await BondTouchCrypto.encryptPayload(payload, pairKeyHex, pairCode);
+
+      // Publish over MQTT to partner
+      mqttClient.publish(`bondtouch_e2ee/${pairCode}/${targetUnit}`, JSON.stringify(encryptedPacket));
+
+      // Send ACK_OK (Green Flash) to local bracelet
+      if (bleRxChar) {
+        const encoder = new TextEncoder();
+        await bleRxChar.writeValue(encoder.encode("ACK_OK"));
+      }
+
+      document.getElementById('touch-hint-text').innerText = "Touch Delivered! (Green Flash)";
+      document.getElementById('touch-hint-text').style.color = "#2ED573";
+    }
+
+    // Auto-init MQTT
+    window.addEventListener('load', () => {
+      initMQTT();
+    });
+  </script>
+</body>
+</html>

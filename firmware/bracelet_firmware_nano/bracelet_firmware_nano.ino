@@ -1,6 +1,6 @@
 /*
   ====================================================================================
-  HAPTIC BRACELET — ESP32-C3 SUPERMINI — UNIT A (OTA FIXED + ACK DELIVERY)
+  HAPTIC BRACELET — ESP32-C3 SUPERMINI — UNIT B (POWER OPTIMIZED + ACK DELIVERY)
   ====================================================================================
   CONFIRMED PIN WIRING:
   - GPIO 0  --> RGB LED: GREEN  (through 220Ω resistor)
@@ -23,7 +23,7 @@
 // ── WIFI (for wireless OTA updates) ────────────────────────────────
 const char* WIFI_SSID = "H";                  // hidden network
 const char* WIFI_PASS = "1122334455hHh@";
-#define OTA_HOSTNAME "BraceletA"              // shows in Arduino IDE ports
+#define OTA_HOSTNAME "BraceletB"              // shows in Arduino IDE ports
 
 // ── PINS ─────────────────────────────────────────────────────────────────────
 #define PIN_G     0   // RGB Green
@@ -33,14 +33,14 @@ const char* WIFI_PASS = "1122334455hHh@";
 #define PIN_MOTOR 5   // Vibration Motor (Transistor)
 
 // ── BLE CONFIG ────────────────────────────────────────────────────────────────
-#define DEVICE_NAME     "BraceletA"
-#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define UUID_TX         "a3c87500-8ed3-4bdf-8a39-a01bebede295"  // ESP32 → App
-#define UUID_RX         "beb5483e-36e1-4688-b7f5-ea07361b26a8"  // App → ESP32
+#define DEVICE_NAME  "BraceletB"
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define UUID_TX      "a3c87500-8ed3-4bdf-8a39-a01bebede295"  // ESP32 → App
+#define UUID_RX      "beb5483e-36e1-4688-b7f5-ea07361b26a8"  // App → ESP32
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-BLEServer*         pServer  = nullptr;
-BLECharacteristic* pTxChar  = nullptr;
+BLEServer*         pServer = nullptr;
+BLECharacteristic* pTxChar = nullptr;
 bool connected = false;
 bool otaInProgress = false;
 unsigned long lastTouchSent = 0;
@@ -61,7 +61,7 @@ void vibrate(int ms) {
   digitalWrite(PIN_MOTOR, LOW);
 }
 
-// ── NON-BLOCKING IDLE PULSE (WiFi OTA Friendly) ───────────────────────────────
+// ── NON-BLOCKING IDLE PULSE (Purple for Unit B) ───────────────────────────────
 void idlePulse() {
   static unsigned long lastUpdate = 0;
   static int brightness = 0;
@@ -74,12 +74,13 @@ void idlePulse() {
     if (brightness >= 160 || brightness <= 0) {
       direction = -direction;
     }
-    rgb(0, 0, brightness);
+    rgb(brightness, 0, brightness); // Purple idle pulse for Unit B
   }
 }
 
 // ── PARTNER CONNECTED (their bracelet just came online) ───────────────────────
 void partnerConnected() {
+  // Purple triple flash + small vibration pulse
   for (int i = 0; i < 3; i++) {
     rgb(160, 0, 255);   // purple
     delay(140);
@@ -89,8 +90,9 @@ void partnerConnected() {
   vibrate(80);          // small confirmation buzz
 }
 
-// ── INCOMING TOUCH PATTERN ────────────────────────────────────────────────────
+// ── INCOMING TOUCH PATTERN (Partner touched their bracelet) ───────────────────
 void incomingTouch() {
+  // Vibrate in heartbeat pattern + warm pink LED
   for (int p = 0; p < 2; p++) {
     rgb(255, 0, 80);        // warm pink
     vibrate(120);
@@ -101,18 +103,22 @@ void incomingTouch() {
   }
 }
 
-// ── OUTGOING TOUCH DELIVERED CONFIRM (Green Flash) ────────────────────────────
+// ── OUTGOING TOUCH DELIVERED CONFIRM (Partner Received Touch -> Green Flash) ─
 void outgoingConfirm() {
-  rgb(0, 255, 0); delay(100); rgbOff();
+  // Green flash + short buzz when touch successfully reaches partner
+  rgb(0, 255, 0); vibrate(80); rgbOff();
   delay(60);
   rgb(0, 255, 0); delay(100); rgbOff();
 }
 
-// ── OUTGOING TOUCH FAILED CONFIRM (Red Strobe) ────────────────────────────────
+// ── OUTGOING TOUCH FAILED CONFIRM (Partner Unreachable -> Fading Red Light) ──
 void failConfirm() {
-  for (int i = 0; i < 3; i++) {
-    rgb(255, 0, 0); delay(120); rgbOff(); delay(80);
+  // Smooth fading red light (no vibration, no strobe)
+  for (int i = 255; i >= 0; i -= 5) {
+    rgb(i, 0, 0);
+    delay(12);
   }
+  rgbOff();
 }
 
 // ── BLE CALLBACKS ─────────────────────────────────────────────────────────────
@@ -122,7 +128,7 @@ class ServerCallbacks : public BLEServerCallbacks {
     for (int i = 0; i < 200; i += 5) { rgb(0, i, 0); delay(4); }
     for (int i = 200; i >= 0; i -= 5) { rgb(0, i, 0); delay(4); }
     rgbOff();
-    vibrate(80);
+    vibrate(80); // small buzz — connection confirmed
   }
   void onDisconnect(BLEServer* s) override {
     connected = false;
@@ -138,13 +144,13 @@ class RxCallbacks : public BLECharacteristicCallbacks {
       incomingTouch();          // partner touched their sensor
     }
     else if (val == "ACK_OK") {
-      outgoingConfirm();        // touch reached partner -> GREEN flash
+      outgoingConfirm();        // partner received touch -> GREEN flash
     }
     else if (val == "ACK_FAIL") {
-      failConfirm();            // touch failed -> RED strobe
+      failConfirm();            // partner not connected -> FADING RED light
     }
     else if (val == "PARTNER_ON") {
-      partnerConnected();       // partner's bracelet came online -> PURPLE flash + buzz
+      partnerConnected();       // partner came online -> PURPLE flash + buzz
     }
     else if (val.startsWith("RGB:")) {
       int r = 0, g = 0, b = 0;
@@ -163,7 +169,7 @@ class RxCallbacks : public BLECharacteristicCallbacks {
 
 // ── SETUP ─────────────────────────────────────────────────────────────────────
 void setup() {
-  setCpuFrequencyMhz(80); // 80MHz power optimization
+  setCpuFrequencyMhz(80); // 80MHz power optimization (3-4 days battery)
 
   Serial.begin(115200);
 
@@ -238,25 +244,27 @@ void loop() {
 
   if (otaInProgress) {
     delay(1);
-    return; // Dedicated CPU focus during OTA transfer (no timeouts!)
-  }
-
-  if (!connected) {
-    idlePulse(); // non-blocking blue pulse
     return;
   }
 
+  if (!connected) {
+    idlePulse(); // non-blocking purple pulse
+    return;
+  }
+
+  // ── TOUCH SENSOR HANDLER ────────────────────────────────────────────────────
   if (digitalRead(PIN_TOUCH) == HIGH) {
     unsigned long now = millis();
     if (now - lastTouchSent > DEBOUNCE) {
       lastTouchSent = now;
 
+      // DO NOT turn on any light or vibration here! Total silence/darkness.
+      // Send TOUCH to app over BLE. App checks partner presence & returns ACK_OK (green) or ACK_FAIL (fading red).
       if (connected) {
-        // Send touch to app — app checks if partner is online & responds ACK_OK or ACK_FAIL
         pTxChar->setValue("TOUCH");
         pTxChar->notify();
       } else {
-        // Not connected to app — direct red failure
+        // App not connected via BLE -> fading red failure
         failConfirm();
       }
 

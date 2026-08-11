@@ -1,38 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bond Touch — 3D Leap Motion Haptic Studio</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leap Motion 3D Holographic Hand Studio</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js & LeapJS Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leapjs/0.6.4/leap-0.6.4.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-  <style>
-    :root {
-      --bg: #0A0B10;
-      --card-bg: rgba(20, 24, 38, 0.75);
-      --accent: #E85D9A;
-      --accent-purple: #9D4EDD;
-      --accent-cyan: #00F5D4;
-      --text: #F1F3F9;
-      --text-dim: #8E96AD;
-      --border: rgba(255, 255, 255, 0.1);
-      --success: #00E676;
-      --fail: #FF5252;
-    }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
 
     body {
-      background-color: var(--bg);
-      color: var(--text);
+      background-color: #06070B;
+      color: #F0F4F8;
+      font-family: 'Outfit', sans-serif;
       overflow: hidden;
-      height: 100vh;
       width: 100vw;
+      height: 100vh;
     }
 
-    #canvas3d {
+    #canvas-container {
       position: absolute;
       top: 0;
       left: 0;
@@ -41,493 +41,728 @@
       z-index: 1;
     }
 
-    .ui-overlay {
+    /* Glassmorphism UI Overlay */
+    .ui-layer {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 2;
+      z-index: 10;
       pointer-events: none;
       display: grid;
-      grid-template-columns: 320px 1fr 340px;
-      padding: 24px;
-      gap: 24px;
-    }
-
-    .panel {
-      background: var(--card-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 20px;
+      grid-template-columns: 330px 1fr 340px;
+      grid-template-rows: 80px 1fr 60px;
       padding: 20px;
-      pointer-events: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      gap: 20px;
     }
 
-    .header {
+    .interactive {
+      pointer-events: auto;
+    }
+
+    .glass-card {
+      background: rgba(15, 20, 32, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    /* Header */
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .logo-badge {
-      width: 40px;
-      height: 40px;
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
       border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-purple));
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      box-shadow: 0 0 20px rgba(232, 93, 154, 0.4);
+      box-shadow: 0 0 24px rgba(0, 242, 254, 0.5);
     }
 
-    h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
-    p.sub { font-size: 12px; color: var(--text-dim); }
+    .logo-icon svg {
+      width: 26px;
+      height: 26px;
+      fill: #06070B;
+    }
 
-    .status-badge {
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #FFFFFF, #94A3B8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand p {
+      font-size: 12px;
+      color: #00F2FE;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .connection-badge {
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 13px;
+      gap: 10px;
+      padding: 10px 20px;
+      border-radius: 30px;
+      background: rgba(10, 15, 26, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 14px;
+      font-weight: 600;
     }
 
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
-      background: var(--text-dim);
+      background-color: #FF4757;
+      box-shadow: 0 0 10px #FF4757;
+      transition: all 0.3s ease;
     }
-    .dot.on { background: var(--success); box-shadow: 0 0 10px var(--success); }
-    .dot.err { background: var(--fail); box-shadow: 0 0 10px var(--fail); }
 
-    .input-group {
+    .dot.connected {
+      background-color: #2ED573;
+      box-shadow: 0 0 14px #2ED573;
+    }
+
+    /* Left Panel: Telemetry */
+    .telemetry-panel {
+      grid-column: 1;
+      grid-row: 2;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 14px;
+      overflow-y: auto;
     }
-    label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); font-weight: 600; }
-    input {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid var(--border);
-      color: #fff;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-    }
-    input:focus { border-color: var(--accent); }
 
-    button {
-      background: linear-gradient(135deg, var(--accent), var(--accent-purple));
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #00F2FE;
+      margin-bottom: 4px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 14px;
+    }
+
+    .metric-label {
+      color: #94A3B8;
+    }
+
+    .metric-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #F8FAFC;
+    }
+
+    .gauge-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00F2FE, #4FACFE);
+      border-radius: 4px;
+      transition: width 0.08s ease-out;
+    }
+
+    /* Right Panel: Controls & Gestures */
+    .control-panel {
+      grid-column: 3;
+      grid-row: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .gesture-box {
+      background: rgba(0, 242, 254, 0.04);
+      border: 1px dashed rgba(0, 242, 254, 0.2);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+
+    .gesture-box.active {
+      background: rgba(0, 242, 254, 0.22);
+      border-color: #00F2FE;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+      transform: scale(1.03);
+    }
+
+    .gesture-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #00F2FE;
+    }
+
+    .gesture-desc {
+      font-size: 12px;
+      color: #94A3B8;
+      margin-top: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
       border: none;
-      color: #fff;
-      padding: 12px;
-      border-radius: 10px;
-      font-weight: 600;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
+      color: #06070B;
+      font-family: inherit;
+      font-weight: 700;
       font-size: 14px;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 15px rgba(232, 93, 154, 0.3);
+      box-shadow: 0 4px 18px rgba(0, 242, 254, 0.35);
     }
-    button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232, 93, 154, 0.5); }
 
-    .center-hud {
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 242, 254, 0.5);
+    }
+
+    /* Center Overlay Guide */
+    .center-guide {
       grid-column: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      padding-bottom: 20px;
-    }
-
-    .gesture-card {
-      background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 16px 32px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      pointer-events: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    }
-
-    .gesture-icon {
-      font-size: 36px;
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.05);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--border);
-    }
-
-    .gesture-info h2 { font-size: 20px; font-weight: 700; color: #fff; }
-    .gesture-info p { font-size: 13px; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace; }
-
-    .gesture-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .gesture-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.03);
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      font-size: 13px;
-    }
-    .gesture-item span.code { font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan); font-size: 11px; }
-
-    .log-box {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      background: rgba(0,0,0,0.5);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      height: 140px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .log-entry { color: var(--text-dim); }
-    .log-entry.ok { color: var(--success); }
-    .log-entry.fail { color: var(--fail); }
-
-    .metric-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .metric-card {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
+      grid-row: 3;
       text-align: center;
+      font-size: 13px;
+      color: #64748B;
+      font-family: 'JetBrains Mono', monospace;
+      align-self: center;
     }
-    .metric-val { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan); }
-    .metric-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
   </style>
 </head>
 <body>
 
-  <!-- 3D THREE.JS CANVAS -->
-  <div id="canvas3d"></div>
+  <!-- 3D Canvas -->
+  <div id="canvas-container"></div>
 
-  <!-- UI OVERLAY -->
-  <div class="ui-overlay">
+  <!-- UI Overlay -->
+  <div class="ui-layer">
     
-    <!-- LEFT PANEL: CONNECTIVITY -->
-    <div class="panel">
-      <div class="header">
-        <div class="logo-badge">🖐️</div>
+    <!-- Header -->
+    <header class="glass-card interactive">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+          </svg>
+        </div>
         <div>
-          <h1>Leap Motion Studio</h1>
-          <p class="sub">3D Spatial Haptic Air Controller</p>
+          <h1>LEAP MOTION 3D STUDIO</h1>
+          <p>USB Real-Time Hand Spatial Tracker</p>
         </div>
       </div>
-
-      <div class="status-badge">
-        <div class="dot" id="dotLeap"></div>
-        <span id="txtLeap">Leap Motion: Disconnected</span>
+      
+      <div class="connection-badge">
+        <div class="dot" id="conn-dot"></div>
+        <span id="conn-text">Connecting Gemini Hardware...</span>
       </div>
+    </header>
 
-      <div class="status-badge">
-        <div class="dot" id="dotBLE"></div>
-        <span id="txtBLE">Bracelet BLE: Disconnected</span>
+    <!-- Left Panel: Telemetry -->
+    <div class="telemetry-panel glass-card interactive">
+      <div class="section-title">🖐️ Real-Time Telemetry</div>
+      
+      <div class="metric-row">
+        <span class="metric-label">Hardware Link</span>
+        <span class="metric-value" id="track-mode">Gemini USB (6438)</span>
       </div>
-
-      <button id="btnBLE">🔵 Connect Bracelet via BLE</button>
-
-      <div class="input-group">
-        <label>Your Name</label>
-        <input type="text" id="myName" value="UserA">
-      </div>
-
-      <div class="input-group">
-        <label>Pair Code</label>
-        <input type="text" id="pairCode" value="102030">
-      </div>
-
-      <button id="btnMQTT">⚡ Connect Cloud Session</button>
-
-      <div class="status-badge">
-        <div class="dot" id="dotMQTT"></div>
-        <span id="txtMQTT">Cloud MQTT: Offline</span>
-      </div>
-    </div>
-
-    <!-- CENTER HUD: LIVE GESTURE DETECTOR -->
-    <div class="center-hud">
-      <div class="gesture-card">
-        <div class="gesture-icon" id="gestIcon">🖐️</div>
-        <div class="gesture-info">
-          <h2 id="gestName">Hovering Hand</h2>
-          <p id="gestHaptic">Proximity Intensity: 0%</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT PANEL: AIR GESTURE DICTIONARY & LOGS -->
-    <div class="panel">
-      <h2>Air Gestures</h2>
-      <div class="gesture-list">
-        <div class="gesture-item">
-          <span>🤌 Air Pinch</span>
-          <span class="code">Heartbeat Pulse</span>
-        </div>
-        <div class="gesture-item">
-          <span>🖐️ Open Palm Push</span>
-          <span class="code">Ramping Glow</span>
-        </div>
-        <div class="gesture-item">
-          <span>✊ Closed Fist</span>
-          <span class="code">Deep Vibrating Buzz</span>
-        </div>
-        <div class="gesture-item">
-          <span>↕️ Height Proximity</span>
-          <span class="code">Distance ➔ Intensity</span>
-        </div>
+      
+      <div class="metric-row">
+        <span class="metric-label">Hands Tracked</span>
+        <span class="metric-value" id="hands-count">0</span>
       </div>
 
       <div class="metric-row">
-        <div class="metric-card">
-          <div class="metric-val" id="valHeight">0 cm</div>
-          <div class="metric-lbl">Hand Height</div>
+        <span class="metric-label">Tracking Rate</span>
+        <span class="metric-value" id="fps-val">0 FPS</span>
+      </div>
+
+      <div style="margin-top: 6px;">
+        <div class="metric-row" style="border:none;">
+          <span class="metric-label">Pinch Strength</span>
+          <span class="metric-value" id="pinch-val">0%</span>
         </div>
-        <div class="metric-card">
-          <div class="metric-val" id="valPinch">0 %</div>
-          <div class="metric-lbl">Pinch Strength</div>
+        <div class="gauge-bar">
+          <div class="gauge-fill" id="pinch-fill"></div>
         </div>
       </div>
 
-      <h2>Activity Log</h2>
-      <div class="log-box" id="logBox">
-        <div class="log-entry">Studio initialized. Plug in Leap Motion via USB.</div>
+      <div style="margin-top: 6px;">
+        <div class="metric-row" style="border:none;">
+          <span class="metric-label">Grab / Fist Strength</span>
+          <span class="metric-value" id="grab-val">0%</span>
+        </div>
+        <div class="gauge-bar">
+          <div class="gauge-fill" id="grab-fill" style="background: linear-gradient(90deg, #FF4757, #FF6B81);"></div>
+        </div>
       </div>
+
+      <div class="section-title" style="margin-top: 16px;">📍 Palm 3D Coordinates</div>
+      <div class="metric-row">
+        <span class="metric-label">X Axis (Left/Right)</span>
+        <span class="metric-value" id="pos-x">0.0 mm</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Y Axis (Height)</span>
+        <span class="metric-value" id="pos-y">0.0 mm</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Z Axis (Depth)</span>
+        <span class="metric-value" id="pos-z">0.0 mm</span>
+      </div>
+    </div>
+
+    <!-- Right Panel: Controls & Gestures -->
+    <div class="control-panel glass-card interactive">
+      <div class="section-title">⚡ Gesture Detector</div>
+
+      <div class="gesture-box" id="pinch-box">
+        <div class="gesture-title">🤌 PINCH DETECTED</div>
+        <div class="gesture-desc">Thumb & Index fingers touching</div>
+      </div>
+
+      <div class="gesture-box" id="fist-box" style="margin-top: 8px;">
+        <div class="gesture-title">✊ FIST / GRAB</div>
+        <div class="gesture-desc">All fingers closed in fist</div>
+      </div>
+
+      <div class="gesture-box" id="hover-box" style="margin-top: 8px;">
+        <div class="gesture-title">🖐️ PALM HOVERING</div>
+        <div class="gesture-desc">Active hand in 3D tracking field</div>
+      </div>
+
+      <div style="margin-top: auto;">
+        <button class="btn" id="btn-toggle-sim">🎮 Toggle Demo Animation</button>
+      </div>
+    </div>
+
+    <div class="center-guide">
+      [ Left Click + Drag to Rotate 3D View | Scroll to Zoom ]
     </div>
 
   </div>
 
   <script>
-    // ── THREE.JS 3D SCENE SETUP ──────────────────────────────────────────
-    const container = document.getElementById('canvas3d');
+    // ─────────────────────────────────────────────────────────────────────────────
+    // THREE.JS 3D SCENE & CAMERA SETUP
+    // ─────────────────────────────────────────────────────────────────────────────
+    const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0A0B10, 0.005);
+    scene.fog = new THREE.FogExp2(0x06070B, 0.0018);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(0, 150, 300);
-    camera.lookAt(0, 100, 0);
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.set(0, 100, 320);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 40, 0);
+
+    // ── LIGHTS ──
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.5);
     scene.add(ambientLight);
 
-    const pointLight = new THREE.PointLight(0xE85D9A, 2, 500);
-    pointLight.position.set(0, 200, 100);
-    scene.add(pointLight);
+    const mainLight = new THREE.PointLight(0x00F2FE, 2.5, 1000);
+    mainLight.position.set(0, 300, 150);
+    scene.add(mainLight);
 
-    const gridHelper = new THREE.GridHelper(600, 40, 0x9D4EDD, 0x1A1F36);
-    gridHelper.position.y = -50;
+    const purpleLight = new THREE.PointLight(0xA855F7, 2, 800);
+    purpleLight.position.set(-200, 150, -100);
+    scene.add(purpleLight);
+
+    // ── GRID & BASE ──
+    const gridHelper = new THREE.GridHelper(800, 40, 0x00F2FE, 0x1E293B);
+    gridHelper.position.y = -60;
     scene.add(gridHelper);
 
-    // 3D Digital Twin Hand Spheres & Bones
-    const handJoints = [];
-    const jointGeo = new THREE.SphereGeometry(6, 16, 16);
-    const jointMat = new THREE.MeshStandardMaterial({ color: 0x00F5D4, roughness: 0.3, metalness: 0.8 });
+    // Hardware Mockup Device
+    const deviceGeo = new THREE.BoxGeometry(90, 14, 30);
+    const deviceMat = new THREE.MeshStandardMaterial({ color: 0x0F172A, metalness: 0.9, roughness: 0.2 });
+    const deviceMesh = new THREE.Mesh(deviceGeo, deviceMat);
+    deviceMesh.position.set(0, -54, 0);
+    scene.add(deviceMesh);
 
-    for (let i = 0; i < 21; i++) {
-      const mesh = new THREE.Mesh(jointGeo, jointMat);
-      mesh.visible = false;
-      scene.add(mesh);
-      handJoints.push(mesh);
-    }
+    const lensGeo = new THREE.BoxGeometry(80, 2, 22);
+    const lensMat = new THREE.MeshBasicMaterial({ color: 0x00F2FE });
+    const lensMesh = new THREE.Mesh(lensGeo, lensMat);
+    lensMesh.position.set(0, -46, 0);
+    scene.add(lensMesh);
 
-    // ── STATE VARIABLES ──────────────────────────────────────────────────
-    let bleConnected = false, rxChar = null;
-    let mqttClient = null, partnerOnline = false;
-    let myName = "UserA", pairCode = "102030";
-    let topic = "", statusTopic = "";
-    let lastGestureTime = 0;
+    // Hologram Target Cube
+    const holoGeo = new THREE.BoxGeometry(45, 45, 45);
+    const holoMat = new THREE.MeshStandardMaterial({ color: 0x00F2FE, wireframe: true, transparent: true, opacity: 0.6 });
+    const holoCube = new THREE.Mesh(holoGeo, holoMat);
+    holoCube.position.set(0, 120, 0);
+    scene.add(holoCube);
 
-    function log(msg, type='') {
-      const b = document.getElementById('logBox');
-      const d = document.createElement('div');
-      d.className = 'log-entry ' + type;
-      d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      b.appendChild(d);
-      b.scrollTop = b.scrollHeight;
-    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 3D HAND SKELETON BUILDER WITH CONNECTED BONES
+    // ─────────────────────────────────────────────────────────────────────────────
+    const handsGroup = new THREE.Group();
+    scene.add(handsGroup);
 
-    // ── BLE CONNECT ──────────────────────────────────────────────────────
-    document.getElementById('btnBLE').addEventListener('click', async () => {
-      try {
-        log('Scanning BLE devices...');
-        const dev = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'Bracelet' }],
-          optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
-        });
-        const gatt = await dev.gatt.connect();
-        const svc = await gatt.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-        rxChar = await svc.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
-        bleConnected = true;
-        document.getElementById('dotBLE').className = 'dot on';
-        document.getElementById('txtBLE').textContent = `BLE: ${dev.name}`;
-        log(`Connected to BLE ${dev.name}!`, 'ok');
-      } catch (err) {
-        log(`BLE Error: ${err.message}`, 'fail');
+    const handVisualizers = {};
+
+    function createHandMesh() {
+      const group = new THREE.Group();
+
+      // Palm Sphere
+      const palmGeo = new THREE.SphereGeometry(12, 16, 16);
+      const palmMat = new THREE.MeshStandardMaterial({ color: 0x00F2FE, emissive: 0x007799, roughness: 0.2 });
+      const palmMesh = new THREE.Mesh(palmGeo, palmMat);
+      group.add(palmMesh);
+
+      // 20 Finger Joint Spheres
+      const jointMeshes = [];
+      const jointGeo = new THREE.SphereGeometry(4.5, 12, 12);
+      const jointMat = new THREE.MeshStandardMaterial({ color: 0x38BDF8, emissive: 0x0284C7 });
+
+      for (let i = 0; i < 20; i++) {
+        const jMesh = new THREE.Mesh(jointGeo, jointMat);
+        group.add(jMesh);
+        jointMeshes.push(jMesh);
       }
-    });
 
-    async function sendESP(payload) {
-      if (!bleConnected || !rxChar) return;
-      try {
-        const enc = new TextEncoder();
-        await rxChar.writeValue(enc.encode(payload));
-      } catch (_) {}
+      // 15 Bone Connectors
+      const boneMeshes = [];
+      const boneMat = new THREE.MeshStandardMaterial({ color: 0x64748B, metalness: 0.8, roughness: 0.3 });
+
+      for (let i = 0; i < 15; i++) {
+        const bGeo = new THREE.CylinderGeometry(2, 2, 1, 8);
+        const bMesh = new THREE.Mesh(bGeo, boneMat);
+        group.add(bMesh);
+        boneMeshes.push(bMesh);
+      }
+
+      return { group, palmMesh, jointMeshes, boneMeshes };
     }
 
-    // ── MQTT CLOUD CONNECT ───────────────────────────────────────────────
-    document.getElementById('btnMQTT').addEventListener('click', () => {
-      myName = document.getElementById('myName').value.trim();
-      pairCode = document.getElementById('pairCode').value.trim();
-      topic = `bondtouch/pair_${pairCode}`;
-      statusTopic = `bondtouch/status_${pairCode}/+`;
+    function updateBone(boneMesh, p1, p2) {
+      const dir = new THREE.Vector3().subVectors(p2, p1);
+      const len = dir.length();
+      if (len < 0.1) {
+        boneMesh.visible = false;
+        return;
+      }
+      boneMesh.visible = true;
+      boneMesh.scale.set(1, len, 1);
+      boneMesh.position.copy(p1).add(p2).multiplyScalar(0.5);
 
-      const cid = 'leap_' + Math.random().toString(16).substr(2, 8);
-      mqttClient = new Paho.MQTT.Client('broker.emqx.io', 8083, '/mqtt', cid);
+      const orientation = new THREE.Matrix4();
+      orientation.lookAt(p1, p2, new THREE.Vector3(0, 1, 0));
+      boneMesh.rotation.setFromRotationMatrix(orientation);
+      boneMesh.rotateX(Math.PI / 2);
+    }
 
-      mqttClient.onMessageArrived = (msg) => {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // LEAP MOTION MULTI-PORT WEBSOCKET CONTROLLER (Scanning 6438, 6437, 6439)
+    // ─────────────────────────────────────────────────────────────────────────────
+    const connDot = document.getElementById('conn-dot');
+    const connText = document.getElementById('conn-text');
+    const handsCountEl = document.getElementById('hands-count');
+    const fpsValEl = document.getElementById('fps-val');
+    const pinchValEl = document.getElementById('pinch-val');
+    const pinchFillEl = document.getElementById('pinch-fill');
+    const grabValEl = document.getElementById('grab-val');
+    const grabFillEl = document.getElementById('grab-fill');
+    const posXEl = document.getElementById('pos-x');
+    const posYEl = document.getElementById('pos-y');
+    const posZEl = document.getElementById('pos-z');
+
+    const pinchBox = document.getElementById('pinch-box');
+    const fistBox = document.getElementById('fist-box');
+    const hoverBox = document.getElementById('hover-box');
+
+    let isConnectedUSB = false;
+    let simMode = false;
+    let activePort = 6438;
+
+    // Direct WebSocket Multi-Port Client for Gemini v5.0
+    const targetPorts = [6438, 6437, 6439, 6436];
+    let activeWS = null;
+
+    function connectWebSocketScan() {
+      if (isConnectedUSB || simMode) return;
+
+      targetPorts.forEach(port => {
         try {
-          const json = JSON.parse(msg.payloadString);
-          if (json.sender && json.sender.toLowerCase() !== myName.toLowerCase()) {
-            if (json.type === 'ble_connect') {
-              partnerOnline = true;
-              sendESP('PARTNER_ON');
-              log(`Partner ${json.sender} connected!`, 'ok');
-            } else if (json.type === 'ble_disconnect') {
-              partnerOnline = false;
-              log(`Partner ${json.sender} disconnected.`, 'fail');
+          const wsUrl = `ws://127.0.0.1:${port}/v6.json`;
+          const socket = new WebSocket(wsUrl);
+
+          socket.onopen = () => {
+            if (activeWS) activeWS.close();
+            activeWS = socket;
+            activePort = port;
+            setUSBStatus(true, port);
+          };
+
+          socket.onmessage = (event) => {
+            if (simMode) return;
+            try {
+              const frame = JSON.parse(event.data);
+              setUSBStatus(true, port);
+              processLeapFrame(frame);
+            } catch (err) {}
+          };
+
+          socket.onclose = () => {
+            if (socket === activeWS) {
+              setUSBStatus(false);
+              setTimeout(connectWebSocketScan, 2000);
             }
-          }
-        } catch (_) {}
-      };
+          };
 
-      mqttClient.connect({
-        onSuccess: () => {
-          document.getElementById('dotMQTT').className = 'dot on';
-          document.getElementById('txtMQTT').textContent = `Cloud: Session ${pairCode}`;
-          mqttClient.subscribe(topic);
-          mqttClient.subscribe(statusTopic);
-          mqttClient.send(topic, JSON.stringify({ type: 'request_status', sender: myName }));
-          log(`Connected to Cloud Session (${pairCode})!`, 'ok');
-        }
+          socket.onerror = () => { socket.close(); };
+        } catch (e) {}
       });
-    });
+    }
 
-    function triggerAirGesture(gestureName, icon, hapticText, codePayload) {
-      const now = Date.now();
-      if (now - lastGestureTime < 1000) return;
-      lastGestureTime = now;
+    // Also initialize LeapJS SDK as backup
+    if (typeof Leap !== 'undefined') {
+      const controller = new Leap.Controller({ port: 6438, enableGestures: true });
+      controller.on('frame', (frame) => {
+        if (simMode) return;
+        setUSBStatus(true, 6438);
+        processLeapFrame(frame);
+      });
+      controller.connect();
+    }
 
-      document.getElementById('gestIcon').textContent = icon;
-      document.getElementById('gestName').textContent = gestureName;
-      document.getElementById('gestHaptic').textContent = hapticText;
+    connectWebSocketScan();
 
-      log(`Air Gesture Detected: ${gestureName}`, 'ok');
-
-      if (partnerOnline && mqttClient) {
-        mqttClient.send(topic, JSON.stringify({ sender: myName, ts: now, gesture: gestureName }));
-        sendESP('ACK_OK'); // Green flash on local bracelet
-      } else {
-        sendESP('ACK_FAIL'); // Smooth fading red on local bracelet
+    function setUSBStatus(active, port = 6438) {
+      if (active && !isConnectedUSB) {
+        isConnectedUSB = true;
+        connDot.classList.add('connected');
+        connText.innerText = `🟢 Connected via USB (${port})`;
+        document.getElementById('track-mode').innerText = `Gemini USB (${port})`;
+      } else if (!active && isConnectedUSB && !simMode) {
+        isConnectedUSB = false;
+        connDot.classList.remove('connected');
+        connText.innerText = '🔴 USB Disconnected';
       }
     }
 
-    // ── LEAP MOTION WEBSOCKET ENGINE ─────────────────────────────────────
-    const controller = new Leap.Controller({ enableGestures: true });
+    function processLeapFrame(frame) {
+      fpsValEl.innerText = Math.round(frame.currentFrameRate || 60) + ' FPS';
+      handsCountEl.innerText = frame.hands ? frame.hands.length : 0;
 
-    controller.on('connect', () => {
-      document.getElementById('dotLeap').className = 'dot on';
-      document.getElementById('txtLeap').textContent = 'Leap Motion: Active 120 FPS';
-      log('Leap Motion Controller connected & tracking!', 'ok');
-    });
-
-    controller.on('disconnect', () => {
-      document.getElementById('dotLeap').className = 'dot err';
-      document.getElementById('txtLeap').textContent = 'Leap Motion: Disconnected';
-      log('Leap Motion Controller disconnected.', 'fail');
-    });
-
-    controller.on('frame', (frame) => {
-      if (frame.hands.length === 0) {
-        handJoints.forEach(j => j.visible = false);
-        document.getElementById('valHeight').textContent = '0 cm';
-        document.getElementById('valPinch').textContent = '0 %';
+      if (!frame.hands || frame.hands.length === 0) {
+        hoverBox.classList.remove('active');
+        pinchBox.classList.remove('active');
+        fistBox.classList.remove('active');
+        
+        Object.keys(handVisualizers).forEach(id => {
+          handVisualizers[id].group.visible = false;
+        });
         return;
       }
 
-      const hand = frame.hands[0];
-      const pos = hand.palmPosition;
+      hoverBox.classList.add('active');
 
-      const heightCm = Math.round(pos[1] / 10);
-      const pinchPct = Math.round(hand.pinchStrength * 100);
-      document.getElementById('valHeight').textContent = `${heightCm} cm`;
-      document.getElementById('valPinch').textContent = `${pinchPct} %`;
+      const activeIds = frame.hands.map(h => h.id);
+      Object.keys(handVisualizers).forEach(id => {
+        if (!activeIds.includes(id)) {
+          handVisualizers[id].group.visible = false;
+        }
+      });
 
-      pointLight.position.set(pos[0], pos[1], pos[2]);
+      frame.hands.forEach((hand, idx) => {
+        let handVis = handVisualizers[hand.id];
+        if (!handVis) {
+          handVis = createHandMesh();
+          handVisualizers[hand.id] = handVis;
+          handsGroup.add(handVis.group);
+        }
 
-      let idx = 0;
-      hand.keypoints = [];
-      hand.fingers.forEach(finger => {
-        finger.positions.forEach(p => {
-          if (idx < handJoints.length) {
-            handJoints[idx].position.set(p[0], p[1] - 50, p[2]);
-            handJoints[idx].visible = true;
-            idx++;
+        handVis.group.visible = true;
+
+        const pPos = hand.palmPosition; // [x, y, z]
+        const palmVec = new THREE.Vector3(pPos[0], pPos[1] - 120, pPos[2]);
+        handVis.palmMesh.position.copy(palmVec);
+
+        if (idx === 0) {
+          posXEl.innerText = pPos[0].toFixed(1) + ' mm';
+          posYEl.innerText = pPos[1].toFixed(1) + ' mm';
+          posZEl.innerText = pPos[2].toFixed(1) + ' mm';
+
+          const pinchPct = Math.round((hand.pinchStrength || 0) * 100);
+          const grabPct = Math.round((hand.grabStrength || 0) * 100);
+
+          pinchValEl.innerText = pinchPct + '%';
+          pinchFillEl.style.width = pinchPct + '%';
+
+          grabValEl.innerText = grabPct + '%';
+          grabFillEl.style.width = grabPct + '%';
+
+          if (pinchPct > 65) pinchBox.classList.add('active');
+          else pinchBox.classList.remove('active');
+
+          if (grabPct > 65) fistBox.classList.add('active');
+          else fistBox.classList.remove('active');
+
+          holoCube.position.set(palmVec.x, palmVec.y + 70, palmVec.z);
+          if (typeof hand.pitch === 'function') holoCube.rotation.x = hand.pitch();
+          if (typeof hand.yaw === 'function') holoCube.rotation.y = hand.yaw();
+          if (typeof hand.roll === 'function') holoCube.rotation.z = hand.roll();
+        }
+
+        // Joints & Bones
+        let jointIdx = 0;
+        let boneIdx = 0;
+        const fingerJointVecs = [];
+
+        if (hand.fingers) {
+          hand.fingers.forEach(finger => {
+            const fingerVecs = [];
+            const positions = finger.positions || [finger.mcpPosition, finger.pipPosition, finger.dipPosition, finger.btipPosition];
+            
+            positions.forEach(pos => {
+              if (pos) {
+                const jVec = new THREE.Vector3(pos[0], pos[1] - 120, pos[2]);
+                fingerVecs.push(jVec);
+
+                if (jointIdx < handVis.jointMeshes.length) {
+                  handVis.jointMeshes[jointIdx].position.copy(jVec);
+                  jointIdx++;
+                }
+              }
+            });
+            fingerJointVecs.push(fingerVecs);
+          });
+        }
+
+        fingerJointVecs.forEach(fingerVecs => {
+          if (boneIdx < handVis.boneMeshes.length && fingerVecs.length > 0) {
+            updateBone(handVis.boneMeshes[boneIdx], palmVec, fingerVecs[0]);
+            boneIdx++;
+          }
+          for (let j = 0; j < fingerVecs.length - 1; j++) {
+            if (boneIdx < handVis.boneMeshes.length) {
+              updateBone(handVis.boneMeshes[boneIdx], fingerVecs[j], fingerVecs[j + 1]);
+              boneIdx++;
+            }
           }
         });
       });
+    }
 
-      if (hand.pinchStrength > 0.85) {
-        triggerAirGesture('Air Pinch', '🤌', 'Sending Double Heartbeat...', 'TOUCH');
-      } else if (hand.grabStrength > 0.85) {
-        triggerAirGesture('Closed Fist', '✊', 'Sending Deep Buzz...', 'VIB:300');
-      } else if (pos[1] > 250) {
-        triggerAirGesture('High Palm Hover', '🖐️', 'Sending Warm Glow...', 'RGB:255,0,80');
+    // ─────────────────────────────────────────────────────────────────────────────
+    // DEMO SIMULATION MODE
+    // ─────────────────────────────────────────────────────────────────────────────
+    const btnSim = document.getElementById('btn-toggle-sim');
+    btnSim.addEventListener('click', () => {
+      simMode = !simMode;
+      if (simMode) {
+        btnSim.innerText = '⏹️ Stop Demo Animation';
+        connDot.classList.add('connected');
+        connText.innerText = '🟢 Demo Simulation Mode';
+        document.getElementById('track-mode').innerText = 'Demo Simulator';
+      } else {
+        btnSim.innerText = '🎮 Toggle Demo Animation';
+        if (!isConnectedUSB) {
+          connDot.classList.remove('connected');
+          connText.innerText = '🔴 USB Disconnected';
+          document.getElementById('track-mode').innerText = `Gemini USB (${activePort})`;
+        }
       }
     });
 
-    controller.connect();
+    let simAngle = 0;
+    function runSimulation() {
+      simAngle += 0.035;
+      const simX = Math.sin(simAngle) * 110;
+      const simY = 190 + Math.cos(simAngle * 0.7) * 45;
+      const simZ = Math.cos(simAngle) * 50;
 
+      const mockPinch = (Math.sin(simAngle * 2) + 1) / 2;
+      const mockGrab = (Math.cos(simAngle * 1.5) + 1) / 2;
+
+      const mockFrame = {
+        currentFrameRate: 60,
+        hands: [
+          {
+            id: 'sim_hand_1',
+            palmPosition: [simX, simY, simZ],
+            pinchStrength: mockPinch,
+            grabStrength: mockGrab,
+            pitch: () => Math.sin(simAngle) * 0.5,
+            yaw: () => simAngle % Math.PI,
+            roll: () => Math.cos(simAngle) * 0.5,
+            fingers: Array(5).fill(0).map((_, fIdx) => ({
+              positions: Array(4).fill(0).map((_, jIdx) => [
+                simX + (fIdx - 2) * 22,
+                simY + jIdx * 20 + 20,
+                simZ + (jIdx * 4)
+              ])
+            }))
+          }
+        ]
+      };
+
+      processLeapFrame(mockFrame);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ANIMATION LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
     function animate() {
       requestAnimationFrame(animate);
+      controls.update();
+
+      holoCube.rotation.y += 0.01;
+
+      if (simMode) {
+        runSimulation();
+      }
+
       renderer.render(scene, camera);
     }
+
     animate();
 
     window.addEventListener('resize', () => {
