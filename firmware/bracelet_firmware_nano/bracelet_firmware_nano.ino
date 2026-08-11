@@ -1,14 +1,29 @@
+/*
+  ====================================================================================
+  HAPTIC BRACELET — ESP32-C3 SUPERMINI — UNIT A (OTA FIXED + ACK DELIVERY)
+  ====================================================================================
+  CONFIRMED PIN WIRING:
+  - GPIO 0  --> RGB LED: GREEN  (through 220Ω resistor)
+  - GPIO 1  --> RGB LED: BLUE   (through 220Ω resistor)
+  - GPIO 2  --> RGB LED: RED    (through 220Ω resistor)
+  - GND     --> RGB LED: Longest Leg (Common Cathode GND)
+  - GPIO 7  --> Touch Sensor TTP223 (SIG/I-O pin)
+  - GPIO 5  --> Vibration Motor (via 2N2222 transistor Base through 1kΩ)
+  ====================================================================================
+*/
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <WiFi.h>
 #include <ArduinoOTA.h>
+#include <esp_wifi.h>
 
 // ── WIFI (for wireless OTA updates) ────────────────────────────────
 const char* WIFI_SSID = "H";                  // hidden network
 const char* WIFI_PASS = "1122334455hHh@";
-#define OTA_HOSTNAME "BraceletB"              // shows in Arduino IDE ports
+#define OTA_HOSTNAME "BraceletA"              // shows in Arduino IDE ports
 
 // ── PINS ─────────────────────────────────────────────────────────────────────
 #define PIN_G     0   // RGB Green
@@ -18,15 +33,16 @@ const char* WIFI_PASS = "1122334455hHh@";
 #define PIN_MOTOR 5   // Vibration Motor (Transistor)
 
 // ── BLE CONFIG ────────────────────────────────────────────────────────────────
-#define DEVICE_NAME  "BraceletB"
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define UUID_TX      "a3c87500-8ed3-4bdf-8a39-a01bebede295"  // ESP32 → App
-#define UUID_RX      "beb5483e-36e1-4688-b7f5-ea07361b26a8"  // App → ESP32
+#define DEVICE_NAME     "BraceletA"
+#define SERVICE_UUID    "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define UUID_TX         "a3c87500-8ed3-4bdf-8a39-a01bebede295"  // ESP32 → App
+#define UUID_RX         "beb5483e-36e1-4688-b7f5-ea07361b26a8"  // App → ESP32
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-BLEServer*         pServer = nullptr;
-BLECharacteristic* pTxChar = nullptr;
+BLEServer*         pServer  = nullptr;
+BLECharacteristic* pTxChar  = nullptr;
 bool connected = false;
+bool otaInProgress = false;
 unsigned long lastTouchSent = 0;
 const unsigned long DEBOUNCE = 800;
 
@@ -45,16 +61,25 @@ void vibrate(int ms) {
   digitalWrite(PIN_MOTOR, LOW);
 }
 
-// ── HEARTBEAT ANIMATION (waiting for connection) ──────────────────────────────
+// ── NON-BLOCKING IDLE PULSE (WiFi OTA Friendly) ───────────────────────────────
 void idlePulse() {
-  // Soft slow purple pulse (tells Unit B apart from Unit A's blue pulse)
-  for (int i = 0; i < 80; i++) { rgb(i * 2, 0, i * 2); delay(6); }
-  for (int i = 80; i >= 0; i--) { rgb(i * 2, 0, i * 2); delay(6); }
+  static unsigned long lastUpdate = 0;
+  static int brightness = 0;
+  static int direction = 2;
+
+  unsigned long now = millis();
+  if (now - lastUpdate > 15) {
+    lastUpdate = now;
+    brightness += direction;
+    if (brightness >= 160 || brightness <= 0) {
+      direction = -direction;
+    }
+    rgb(0, 0, brightness);
+  }
 }
 
 // ── PARTNER CONNECTED (their bracelet just came online) ───────────────────────
 void partnerConnected() {
-  // Purple triple flash + small vibration pulse
   for (int i = 0; i < 3; i++) {
     rgb(160, 0, 255);   // purple
     delay(140);
@@ -66,7 +91,6 @@ void partnerConnected() {
 
 // ── INCOMING TOUCH PATTERN ────────────────────────────────────────────────────
 void incomingTouch() {
-  // Vibrate in heartbeat pattern + warm pink LED
   for (int p = 0; p < 2; p++) {
     rgb(255, 0, 80);        // warm pink
     vibrate(120);
@@ -77,23 +101,28 @@ void incomingTouch() {
   }
 }
 
-// ── SEND TOUCH PATTERN (outgoing confirm) ─────────────────────────────────────
+// ── OUTGOING TOUCH DELIVERED CONFIRM (Green Flash) ────────────────────────────
 void outgoingConfirm() {
-  // Quick green double flash — touch was sent
   rgb(0, 255, 0); delay(100); rgbOff();
   delay(60);
   rgb(0, 255, 0); delay(100); rgbOff();
+}
+
+// ── OUTGOING TOUCH FAILED CONFIRM (Red Strobe) ────────────────────────────────
+void failConfirm() {
+  for (int i = 0; i < 3; i++) {
+    rgb(255, 0, 0); delay(120); rgbOff(); delay(80);
+  }
 }
 
 // ── BLE CALLBACKS ─────────────────────────────────────────────────────────────
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* s) override {
     connected = true;
-    // Green breathe animation on connect
     for (int i = 0; i < 200; i += 5) { rgb(0, i, 0); delay(4); }
     for (int i = 200; i >= 0; i -= 5) { rgb(0, i, 0); delay(4); }
     rgbOff();
-    vibrate(80); // small buzz — connection confirmed
+    vibrate(80);
   }
   void onDisconnect(BLEServer* s) override {
     connected = false;
@@ -108,8 +137,14 @@ class RxCallbacks : public BLECharacteristicCallbacks {
     if (val == "TOUCH") {
       incomingTouch();          // partner touched their sensor
     }
+    else if (val == "ACK_OK") {
+      outgoingConfirm();        // touch reached partner -> GREEN flash
+    }
+    else if (val == "ACK_FAIL") {
+      failConfirm();            // touch failed -> RED strobe
+    }
     else if (val == "PARTNER_ON") {
-      partnerConnected();       // partner's bracelet just came online
+      partnerConnected();       // partner's bracelet came online -> PURPLE flash + buzz
     }
     else if (val.startsWith("RGB:")) {
       int r = 0, g = 0, b = 0;
@@ -128,6 +163,8 @@ class RxCallbacks : public BLECharacteristicCallbacks {
 
 // ── SETUP ─────────────────────────────────────────────────────────────────────
 void setup() {
+  setCpuFrequencyMhz(80); // 80MHz power optimization
+
   Serial.begin(115200);
 
   pinMode(PIN_R, OUTPUT);
@@ -164,16 +201,34 @@ void setup() {
 
   // ── WIFI + OTA SETUP ──────────────────────────────────────────────────────
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS, 0, nullptr, true); // true = connect to hidden SSID
+  WiFi.begin(WIFI_SSID, WIFI_PASS, 0, nullptr, true);
   unsigned long wifiStart = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 8000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 6000) {
     delay(300);
   }
   if (WiFi.status() == WL_CONNECTED) {
     rgb(0, 255, 100); delay(300); rgbOff(); // teal flash = WiFi OK
+    WiFi.setSleep(true);
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
   }
 
   ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.onStart([]() {
+    otaInProgress = true;
+    for (int i = 0; i < 6; i++) { rgb(255,255,255); delay(80); rgbOff(); delay(80); }
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    int pct = progress * 255 / total;
+    rgb(0, 0, pct);
+  });
+  ArduinoOTA.onEnd([]() {
+    otaInProgress = false;
+    rgb(0, 255, 0); delay(500); rgbOff();
+  });
+  ArduinoOTA.onError([](ota_error_t err) {
+    otaInProgress = false;
+    rgb(255, 0, 0); delay(800); rgbOff();
+  });
   ArduinoOTA.begin();
 }
 
@@ -181,8 +236,13 @@ void setup() {
 void loop() {
   ArduinoOTA.handle(); // check for wireless update first
 
+  if (otaInProgress) {
+    delay(1);
+    return; // Dedicated CPU focus during OTA transfer (no timeouts!)
+  }
+
   if (!connected) {
-    idlePulse(); // slow purple pulse when waiting (Unit B identifier)
+    idlePulse(); // non-blocking blue pulse
     return;
   }
 
@@ -190,9 +250,16 @@ void loop() {
     unsigned long now = millis();
     if (now - lastTouchSent > DEBOUNCE) {
       lastTouchSent = now;
-      pTxChar->setValue("TOUCH");
-      pTxChar->notify();
-      outgoingConfirm();
+
+      if (connected) {
+        // Send touch to app — app checks if partner is online & responds ACK_OK or ACK_FAIL
+        pTxChar->setValue("TOUCH");
+        pTxChar->notify();
+      } else {
+        // Not connected to app — direct red failure
+        failConfirm();
+      }
+
       while (digitalRead(PIN_TOUCH) == HIGH) { delay(10); }
     }
   }

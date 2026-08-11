@@ -1,6 +1,6 @@
 /*
   ====================================================================================
-  HAPTIC BRACELET — ESP32-C3 SUPERMINI — UNIT B (OTA FIXED + ACK DELIVERY)
+  HAPTIC BRACELET — ESP32-C3 SUPERMINI — UNIT B (EXACT FADING RED + ACK DELIVERY)
   ====================================================================================
   CONFIRMED PIN WIRING:
   - GPIO 0  --> RGB LED: GREEN  (through 220Ω resistor)
@@ -80,6 +80,7 @@ void idlePulse() {
 
 // ── PARTNER CONNECTED (their bracelet just came online) ───────────────────────
 void partnerConnected() {
+  // Purple triple flash + small vibration pulse
   for (int i = 0; i < 3; i++) {
     rgb(160, 0, 255);   // purple
     delay(140);
@@ -89,8 +90,9 @@ void partnerConnected() {
   vibrate(80);          // small confirmation buzz
 }
 
-// ── INCOMING TOUCH PATTERN ────────────────────────────────────────────────────
+// ── INCOMING TOUCH PATTERN (Partner touched their bracelet) ───────────────────
 void incomingTouch() {
+  // Vibrate in heartbeat pattern + warm pink LED
   for (int p = 0; p < 2; p++) {
     rgb(255, 0, 80);        // warm pink
     vibrate(120);
@@ -101,18 +103,22 @@ void incomingTouch() {
   }
 }
 
-// ── OUTGOING TOUCH DELIVERED CONFIRM (Green Flash) ────────────────────────────
+// ── OUTGOING TOUCH DELIVERED CONFIRM (Partner Received Touch -> Green Flash) ─
 void outgoingConfirm() {
-  rgb(0, 255, 0); delay(100); rgbOff();
+  // Green flash + short buzz when touch successfully reaches partner
+  rgb(0, 255, 0); vibrate(80); rgbOff();
   delay(60);
   rgb(0, 255, 0); delay(100); rgbOff();
 }
 
-// ── OUTGOING TOUCH FAILED CONFIRM (Red Strobe) ────────────────────────────────
+// ── OUTGOING TOUCH FAILED CONFIRM (Partner Unreachable -> Fading Red Light) ──
 void failConfirm() {
-  for (int i = 0; i < 3; i++) {
-    rgb(255, 0, 0); delay(120); rgbOff(); delay(80);
+  // Smooth fading red light (no vibration, no strobe)
+  for (int i = 255; i >= 0; i -= 5) {
+    rgb(i, 0, 0);
+    delay(12);
   }
+  rgbOff();
 }
 
 // ── BLE CALLBACKS ─────────────────────────────────────────────────────────────
@@ -138,13 +144,13 @@ class RxCallbacks : public BLECharacteristicCallbacks {
       incomingTouch();          // partner touched their sensor
     }
     else if (val == "ACK_OK") {
-      outgoingConfirm();        // touch reached partner -> GREEN flash
+      outgoingConfirm();        // partner received touch -> GREEN flash
     }
     else if (val == "ACK_FAIL") {
-      failConfirm();            // touch failed -> RED strobe
+      failConfirm();            // partner not connected -> FADING RED light
     }
     else if (val == "PARTNER_ON") {
-      partnerConnected();       // partner's bracelet came online -> PURPLE flash + buzz
+      partnerConnected();       // partner came online -> PURPLE flash + buzz
     }
     else if (val.startsWith("RGB:")) {
       int r = 0, g = 0, b = 0;
@@ -238,7 +244,7 @@ void loop() {
 
   if (otaInProgress) {
     delay(1);
-    return; // Dedicated CPU focus during OTA transfer (no timeouts!)
+    return;
   }
 
   if (!connected) {
@@ -246,17 +252,19 @@ void loop() {
     return;
   }
 
+  // ── TOUCH SENSOR HANDLER ────────────────────────────────────────────────────
   if (digitalRead(PIN_TOUCH) == HIGH) {
     unsigned long now = millis();
     if (now - lastTouchSent > DEBOUNCE) {
       lastTouchSent = now;
 
+      // DO NOT turn on any light or vibration here! Total silence/darkness.
+      // Send TOUCH to app over BLE. App checks partner presence & returns ACK_OK (green) or ACK_FAIL (fading red).
       if (connected) {
-        // Send touch to app — app checks if partner is online & responds ACK_OK or ACK_FAIL
         pTxChar->setValue("TOUCH");
         pTxChar->notify();
       } else {
-        // Not connected to app — direct red failure
+        // App not connected via BLE -> fading red failure
         failConfirm();
       }
 
